@@ -1081,11 +1081,13 @@ bool TaskIsChild()
 
         if (test_deadline_update == false) {
             // update scheduling deadlines
-            TASK *tp = Tasks;
-            for (i=0; i <= max_task; i++, tp++) {
-                if (!tp->valid) continue;
+	    for (p = HIGHEST_PRIORITY; p >= LOWEST_PRIORITY; p--) {
+	    TaskQ_t *head = &TaskQ[p];
+	    TaskLL_t *tll = head->tll.next;
+            while (tll) {
                 bool wake = false;
                 
+                TASK *tp = tll->t;
                 if (tp->deadline > 0) {
                     if (tp->deadline < now_us) {
                         evNT(EC_EVENT, EV_NEXTTASK, -1, "NextTask", evprintf("deadline expired %s, Qrunnable %d", task_s(tp), tp->tq->runnable));
@@ -1105,6 +1107,8 @@ bool TaskIsChild()
                     RUNNABLE_YES(tp);
                     tp->wake_param = TO_VOID_PARAM(tp->last_run_time);      // return how long task ran last time
                 }
+		tll = tll->next;
+		}
             }
         }
 
