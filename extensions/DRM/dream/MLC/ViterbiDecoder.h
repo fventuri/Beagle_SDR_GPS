@@ -39,32 +39,29 @@
 /* SIMD implementation is always fixed-point (is disabled if MAP decoder is
    activated!) */
 #define USE_SIMD
-#undef USE_SIMD
+//#undef USE_SIMD
 
 /* Use MMX or SSE2 */
 #define USE_MMX
 #undef USE_MMX
 
+#define USE_SSE2
+#undef USE_SSE2
 
 /* No MAP implementation for SIMD! */
 #ifdef USE_MAX_LOG_MAP
 # undef USE_SIMD
 #endif
 
-#ifdef USE_SIMD
-# ifndef USE_MMX
-#  define USE_SSE2
-# endif
-#endif
-
 /* Data type for Viterbi metric */
 #ifdef USE_SIMD
-# define _VITMETRTYPE				unsigned char
-# define _DECISIONTYPE				unsigned char
+# define _VITMETRTYPE				unsigned short 
+# define MC_METRIC_INIT_VALUE		((_VITMETRTYPE) 15200)
 #else
 # define _VITMETRTYPE				float
-# define _DECISIONTYPE				_BINARY
+# define MC_METRIC_INIT_VALUE		((_VITMETRTYPE) 1e10)
 #endif
+# define _DECISIONTYPE				_BINARY
 
 /* We initialize each new block of data all branches-metrics with the following
    value exept of the zero-state. This can be done since we actually KNOW that
@@ -73,11 +70,6 @@
    should not take the largest value possible of the data type of the metric
    variable since in the Viterbi-routine we add something to this value and
    in that case we would force an overrun! */
-#ifdef USE_SIMD
-# define MC_METRIC_INIT_VALUE		((_VITMETRTYPE) 60)
-#else
-# define MC_METRIC_INIT_VALUE		((_VITMETRTYPE) 1e10)
-#endif
 
 
 /* In case of MAP decoder, all metrics must be stored for the entire input
@@ -127,14 +119,15 @@ protected:
     _VITMETRTYPE			chMet1[MC_NUM_STATES / 2];
     _VITMETRTYPE			chMet2[MC_NUM_STATES / 2];
 
-#ifdef USE_MMX
+#if defined(USE_MMX)
     void TrellisUpdateMMX(
-#endif
-#ifdef USE_SSE2
+#elif defined(USE_SSE2)
         void TrellisUpdateSSE2(
+#else
+	void TrellisUpdateCPU(
 #endif
-            const _DECISIONTYPE* pCurDec,
-            const _VITMETRTYPE* pCurTrelMetric, const _VITMETRTYPE* pOldTrelMetric,
+            _DECISIONTYPE* pCurDec,
+            _VITMETRTYPE* pCurTrelMetric, const _VITMETRTYPE* pOldTrelMetric,
             const _VITMETRTYPE* pchMet1, const _VITMETRTYPE* pchMet2);
 #endif
     };

@@ -284,11 +284,12 @@ _REAL CViterbiDecoder::Decode(CVector<CDistance>& vecNewDistance,
 
         #ifdef USE_SIMD
             /* Do actual trellis update in separate file (assembler implementation) */
-            #ifdef USE_MMX
+            #if defined(USE_MMX)
                 TrellisUpdateMMX
-            #endif
-            #ifdef USE_SSE2
+            #elif defined(USE_SSE2)
                 TrellisUpdateSSE2
+	    #else
+                TrellisUpdateCPU
             #endif
                 (&matdecDecisions[i][0], pCurTrelMetric, pOldTrelMetric, chMet1, chMet2);
         #endif
