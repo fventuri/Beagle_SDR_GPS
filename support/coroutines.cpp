@@ -1026,16 +1026,22 @@ bool TaskIsChild()
 
     if (quanta > ct->longest) {
     	ct->longest = quanta;
+#ifdef DEBUG
     	ct->long_name = where;
+#endif
     	
+#ifdef DEBUG
 		// fixme: remove at some point
 		if (quanta > 2000000 && ct->id != 0) {
 			printf("LRUN %s %s %7.3f\n", task_ls(ct), where, (float) quanta / 1000);
 			//evNT(EC_DUMP, EV_NEXTTASK, -1, "NT", "LRUN");
 		}
+#endif
     }
 
+#ifdef DEBUG
 	ct->where = where;
+#endif
 
     // don't switch until minrun expired (if any)
     if (ct->minrun && ((enter_us - ct->minrun_start_us) < ct->minrun))
@@ -1369,7 +1375,9 @@ bool TaskIsChild()
 
 	ct->last_last_run_time = ct->last_run_time;
 	ct->last_run_time = quanta;
+#ifdef DEBUG
 	ct->last_pc = pc;
+#endif
 	last_task_run = ct;
 
     cur_task = t;

@@ -204,6 +204,7 @@ static void dx_reload_json(cfg_t *cfg)
 	
 	dx_t *dxp = _dx_list;
 	int i = 0;
+	bool ret;
 
 	for (; jt != end_tok; dxp++, i++) {
 		assert(i < _dx_list_len);
@@ -211,24 +212,28 @@ static void dx_reload_json(cfg_t *cfg)
 		jt++;
 		
 		double f;
-		assert(dxcfg_float_json(jt, &f) == true);
+		ret = dxcfg_float_json(jt, &f); 
+		assert(ret == true);
 		dxp->freq = f;
 		jt++;
 		
 		const char *mode;
-		assert(dxcfg_string_json(jt, &mode) == true);
+		ret = dxcfg_string_json(jt, &mode); 
+		assert(ret == true);
 		dx_mode(dxp, mode);
 		dxcfg_string_free(mode);
 		jt++;
 		
-		assert(dxcfg_string_json(jt, &s) == true);
+		ret = dxcfg_string_json(jt, &s); 
+		assert(ret == true);
 		kiwi_str_unescape_quotes((char *) s);
         dxp->ident_s = strdup(s);
 		dxp->ident = kiwi_str_encode((char *) s);
 		dxcfg_string_free(s);
 		jt++;
 		
-		assert(dxcfg_string_json(jt, &s) == true);
+		ret = dxcfg_string_json(jt, &s); 
+		assert(ret == true);
 		kiwi_str_unescape_quotes((char *) s);
         dxp->notes_s = strdup(s);
 		dxp->notes = kiwi_str_encode((char *) s);
@@ -260,7 +265,8 @@ static void dx_reload_json(cfg_t *cfg)
 			while (jt != end_tok && !JSMN_IS_ARRAY(jt)) {
 				assert(JSMN_IS_ID(jt));
 				const char *id;
-				assert(dxcfg_string_json(jt, &id) == true);
+				ret = dxcfg_string_json(jt, &id); 
+				assert(ret == true);
 				jt++;
 				
 				int num;
