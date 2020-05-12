@@ -129,8 +129,11 @@ void fpga_init() {
 	}
 
 	// FPGA configuration bitstream
-    fp = fopen(stprintf("%sKiwiSDR.%s.bit", background_mode? "/usr/local/bin/":"", fpga_file) , "rb");
-    if (!fp) panic("fopen config");
+    if (!raspsdr)
+        fp = fopen(stprintf("%sKiwiSDR.%s.bit", background_mode? "/usr/local/bin/":"", fpga_file) , "rb");
+    else
+        fp = fopen(stprintf("%sRaspSDR.%s.bit", background_mode? "/usr/local/bin/":"", fpga_file) , "rb");
+    if (!fp) panic("fopen FPGA bitstream");
     free(fpga_file);
 
 	// byte-swap config data to match ended-ness of SPI

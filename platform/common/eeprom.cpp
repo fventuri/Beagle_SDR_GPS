@@ -117,12 +117,16 @@ struct eeprom_t {
 static eeprom_t eeprom;
 static bool debian8 = false;
 
+#if defined(CPU_BCM2837)
+bool raspsdr = false;
+#endif
+
 #define EEPROM_DEV_DEBIAN7	    "/sys/bus/i2c/devices/1-0054/eeprom"
 
 #ifdef CPU_AM5729
  #define EEPROM_DEV_DEBIAN8	    "/sys/bus/i2c/devices/3-0054/eeprom"
 #elif defined(CPU_BCM2837)
- #define EEPROM_DEV_DEBIAN8	    "/sys/bus/i2c/devices/1-0054/eeprom"
+ #define EEPROM_DEV_DEBIAN8	    "/sys/bus/i2c/devices/1-0050/eeprom"
 #else
  #define EEPROM_DEV_DEBIAN8	    "/sys/bus/i2c/devices/2-0054/eeprom"
 #endif
@@ -140,6 +144,9 @@ int eeprom_check()
 	if (fp == NULL && errno == ENOENT) {
 		fn = EEPROM_DEV_DEBIAN8;
 		debian8 = true;
+#if defined(CPU_BCM2837)
+		raspsdr = true;
+#endif
 		fp = fopen(fn, "r");
 	}
 	

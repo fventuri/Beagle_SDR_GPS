@@ -339,9 +339,9 @@ int main(int argc, char *argv[])
 
 	if (need_hardware) {
 		peri_init();
+		eeprom_update();
 		fpga_init();
 		//pru_start();
-		eeprom_update();
 		
 		bool ext_ADC_clk = cfg_bool("ext_ADC_clk", &err, CFG_OPTIONAL);
 		if (err) ext_ADC_clk = false;

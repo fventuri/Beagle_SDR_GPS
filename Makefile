@@ -938,12 +938,19 @@ else
 	install -D -o root -g root KiwiSDR.rx8.wf2.bit /usr/local/bin/KiwiSDR.rx8.wf2.bit
 	install -D -o root -g root KiwiSDR.rx3.wf3.bit /usr/local/bin/KiwiSDR.rx3.wf3.bit
 	install -D -o root -g root KiwiSDR.rx14.wf0.bit /usr/local/bin/KiwiSDR.rx14.wf0.bit
+#	Firmwares for raspsdr
+	install -D -o root -g root RaspSDR.rx4.wf4.bit /usr/local/bin/RaspSDR.rx4.wf4.bit
+	install -D -o root -g root RaspSDR.rx8.wf2.bit /usr/local/bin/RaspSDR.rx8.wf2.bit
+	install -D -o root -g root RaspSDR.rx3.wf3.bit /usr/local/bin/RaspSDR.rx3.wf3.bit
+	install -D -o root -g root RaspSDR.rx14.wf0.bit /usr/local/bin/RaspSDR.rx14.wf0.bit
 #
 	install -o root -g root unix_env/kiwid /etc/init.d
 	install -o root -g root -m 0644 unix_env/kiwid.service /etc/systemd/system
+ifneq ($(RPI), true)
 	install -D -o root -g root -m 0644 unix_env/$(CAPE).dts /lib/firmware/$(CAPE).dts
 	install -D -o root -g root -m 0644 unix_env/$(SPI).dts /lib/firmware/$(SPI).dts
 	install -D -o root -g root -m 0644 unix_env/$(PRU).dts /lib/firmware/$(PRU).dts
+endif
 #
 	install -D -o root -g root $(GEN_DIR)/noip2 /usr/local/bin/noip2
 #
