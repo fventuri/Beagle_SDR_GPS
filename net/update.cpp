@@ -73,7 +73,7 @@ static void update_build_ctask(void *param)
         struct stat st;
         bool use_git_proto = (stat(DIR_CFG "/opt.git_no_https", &st) == 0);
 	    asprintf(&cmd_p, "cd /root/" REPO_NAME "; " \
-	        "git pull -v %s://github.com/jks-prv/Beagle_SDR_GPS.git >>/root/build.log 2>&1; ", \
+	        "git pull -v %s://github.com/RaspSDR/Beagle_SDR_GPS.git >>/root/build.log 2>&1; ", \
 		    use_git_proto? "git" : "https" \
 		);
 		status = system(cmd_p);
@@ -84,7 +84,7 @@ static void update_build_ctask(void *param)
         // must use git: protocol otherwise https: cert mismatch error will occur
         if (status != 0) {
             asprintf(&cmd_p, "cd /root/" REPO_NAME "; " \
-                "git pull -v git://" GITHUB_COM_PUBLIC_IP "/jks-prv/Beagle_SDR_GPS.git >>/root/build.log 2>&1; "
+                "git pull -v git://" GITHUB_COM_PUBLIC_IP "/RaspSDR/Beagle_SDR_GPS.git >>/root/build.log 2>&1; "
             );
             status = system(cmd_p);
             free(cmd_p);
@@ -104,7 +104,7 @@ static void update_build_ctask(void *param)
 static void curl_makefile_ctask(void *param)
 {
 	int status = system("cd /root/" REPO_NAME " ; echo ======== checking for update >/root/build.log; date >>/root/build.log; " \
-	    "curl --silent --show-error --ipv4 --connect-timeout 15 https://raw.githubusercontent.com/jks-prv/Beagle_SDR_GPS/master/Makefile -o Makefile.1 >>/root/build.log 2>&1");
+	    "curl --silent --show-error --ipv4 --connect-timeout 15 https://raw.githubusercontent.com/RaspSDR/Beagle_SDR_GPS/master/Makefile -o Makefile.1 >>/root/build.log 2>&1");
 
 	child_status_exit(status);
     system("cd /root/" REPO_NAME " ; diff Makefile Makefile.1 >>/root/build.log");

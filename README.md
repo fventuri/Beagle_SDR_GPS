@@ -22,7 +22,7 @@ KiwiSDR had a successful [Kickstarter](https://www.kickstarter.com/projects/1575
 * Listen live: [List](http://kiwisdr.com/public), [Map](http://rx.linkfanel.net)
 * [Project webpage](http://www.kiwisdr.com/)
 * [Operating information: installation, operation, FAQ](http://www.kiwisdr.com/quickstart/)
-* Latest [source code commits](https://github.com/jks-prv/Beagle_SDR_GPS/commits/master)
+* Latest [source code commits](https://github.com/RaspSDR/Beagle_SDR_GPS/commits/master)
 * [Design review document](https://www.dropbox.com/s/i1bjyp1acghnc16/KiwiSDR.design.review.pdf?dl=1)
 * [Schematic](http://www.kiwisdr.com/docs/KiwiSDR/kiwi.schematic.pdf), [Gerbers](http://www.kiwisdr.com/docs/KiwiSDR/kiwi.gerbers.tar), [Active antenna](http://www.kiwisdr.com/docs/KiwiSDR/ant.pdf), [BOM ODS](http://www.kiwisdr.com/docs/KiwiSDR/kiwi.bom.ods), [BOM XLS](http://www.kiwisdr.com/docs/KiwiSDR/kiwi.bom.xls)
 

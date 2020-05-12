@@ -147,7 +147,7 @@ alias gdi="git diff"
 alias gst="git status"
 alias gsh="git show"
 alias grem="git remote -v"
-alias gclone="function _gclone () { git clone https://github.com/jks-prv/\$1.git ; } ; _gclone"
+alias gclone="function _gclone () { git clone https://github.com/RaspSDR/\$1.git ; } ; _gclone"
 
 # git commits
 # current commit
@@ -301,7 +301,7 @@ alias mu="make users"
 alias ja="jq '.' /root/kiwi.config/admin.json"
 alias jk="jq '.' /root/kiwi.config/kiwi.json"
 alias jd="jq '.' /root/kiwi.config/dx.json"
-alias scD="git clone https://github.com/jks-prv/Beagle_SDR_GPS.git"
+alias scD="git clone https://github.com/RaspSDR/Beagle_SDR_GPS.git"
 alias urldecode='sed "s@+@ @g;s@%@\\\\x@g" | xargs -0 printf "%b"'
 alias wk="json_pp -t dumper <~root/kiwi.config/kiwi.json | grep rx_name | urldecode"
 alias status="function _status () { curl --connect-timeout 5 \${*}:8073/status ; } ; _status"

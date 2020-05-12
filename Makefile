@@ -1093,10 +1093,10 @@ git:
 	@# remove local changes from development activities before the pull
 	git clean -fd
 	git checkout .
-	git pull -v $(GIT_PROTO)://github.com/jks-prv/Beagle_SDR_GPS.git
+	git pull -v $(GIT_PROTO)://github.com/RaspSDR/Beagle_SDR_GPS.git
 
 update_check:
-	curl --silent --ipv4 --show-error --connect-timeout 15 https://raw.githubusercontent.com/jks-prv/Beagle_SDR_GPS/master/Makefile -o Makefile.1
+	curl --silent --ipv4 --show-error --connect-timeout 15 https://raw.githubusercontent.com/RaspSDR/Beagle_SDR_GPS/master/Makefile -o Makefile.1
 	diff Makefile Makefile.1 | head
 
 force_update:
@@ -1122,7 +1122,7 @@ endif
 	@echo BeagleBone EEPROM:
 	hexdump -C /sys/bus/i2c/devices/0-0050/eeprom
 
-REPO = https://github.com/jks-prv/$(REPO_NAME).git
+REPO = https://github.com/RaspSDR/$(REPO_NAME).git
 
 # selectively transfer files to the target so everything isn't compiled each time
 EXCLUDE_RSYNC = ".DS_Store" ".git" "/obj" "/obj_O3" "/obj_keep" "*.dSYM" "*.bin" "*.aout" "e_cpu/a" "*.aout.h" "kiwi.gen.h" \
