@@ -590,7 +590,6 @@ void webserver_collect_print_stats(int print)
         	}
 		kstr_free(reply);
 		
-		kstr_free(reply);
 	    int cpufreq_kHz = 1000000, temp_deg_mC = 0;
 
 #if defined(CPU_AM5729) || defined(CPU_BCM2837)
