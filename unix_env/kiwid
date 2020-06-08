@@ -100,7 +100,7 @@ case "$1" in
             echo "RaspSDR Detected"
         else
             echo "KiwiSDR Detected"
-        if
+	fi
     else
         if test \( ! -f /lib/firmware/${CAPE}.dtbo \) -o \( /lib/firmware/${CAPE}.dts -nt /lib/firmware/${CAPE}.dtbo \) ; then
             echo compile ${DEV} device tree;
