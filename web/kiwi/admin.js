@@ -5,7 +5,7 @@
 //		NTP status?
 
 var admin = {
-   BBAI: false,
+   rx14_wf0: false,
    reg_status: {}
 };
 
@@ -88,7 +88,7 @@ function mode_html()
                w3_div('w3-flex w3-halign-center w3-margin-B-5', '<img src="gfx/kiwi.73x73.jpg" width="73" height="73" />'),
                w3_div('w3-flex w3-halign-center w3-margin-B-5', '<img src="gfx/cowbelly.73x73.jpg" width="73" height="73" />'),
                w3_div('w3-flex', '<img src="gfx/kiwi.derp.113x73.jpg" width="113" height="73" />'),
-               admin.BBAI? 
+               admin.rx14_wf0? 
                   w3_div('w3-flex', '<img src="gfx/kiwi.derp.113x73.jpg" width="113" height="73" />')
                :
                   ''
@@ -97,8 +97,8 @@ function mode_html()
                w3_nav(admin_colors[ci++] +' w3-border w3-padding-xxlarge w3-restart', 'Kiwi classic', kiwi.RX4_WF4, 'firmware_sel_cb', (adm.firmware_sel == kiwi.RX4_WF4)),
                w3_nav(admin_colors[ci++] +' w3-border w3-padding-xxlarge w3-restart', 'More receivers', kiwi.RX8_WF2, 'firmware_sel_cb', (adm.firmware_sel == kiwi.RX8_WF2)),
                w3_nav(admin_colors[ci++] +' w3-border w3-padding-xxlarge w3-restart', 'More bandwidth', kiwi.RX3_WF3, 'firmware_sel_cb', (adm.firmware_sel == kiwi.RX3_WF3)),
-               admin.BBAI? 
-                  w3_nav(admin_colors[ci++] +' w3-border w3-padding-xxlarge w3-restart', 'BBAI rx14_wf0', kiwi.RX14_WF0, 'firmware_sel_cb', (adm.firmware_sel == kiwi.RX14_WF0))
+               admin.rx14_wf0? 
+                  w3_nav(admin_colors[ci++] +' w3-border w3-padding-xxlarge w3-restart', 'MCORE rx14_wf0', kiwi.RX14_WF0, 'firmware_sel_cb', (adm.firmware_sel == kiwi.RX14_WF0))
                :
                   ''
             ),
@@ -416,7 +416,7 @@ function connect_html()
 		
       w3_divs('w3-container/w3-tspace-8',
          w3_label('w3-bold', 'What domain name or IP address will people use to connect to your KiwiSDR?<br>' +
-            'If you are listing on sdr.hu this information will be part of your entry.<br>' +
+            'If you are listing on rx.kiwisdr.com this information will be part of your entry.<br>' +
             'Click one of the five options below and enter any additional information:<br><br>'),
          
          // (n/a anymore) w3-static because w3-sidenav does a position:fixed which is no good here at the bottom of the page
@@ -622,7 +622,7 @@ function connect_dom_nam_focus()
 	ext_set_cfg_param('cfg.server_url', cfg.sdr_hu_dom_name, true);
 	ext_set_cfg_param('cfg.sdr_hu_dom_sel', connect_dom_sel.NAM, true);
 	connect_update_url();
-   w3_hide('id-warn-ip');
+   //w3_hide('id-warn-ip');
 }
 
 function connect_dom_duc_focus()
@@ -631,7 +631,7 @@ function connect_dom_duc_focus()
 	ext_set_cfg_param('cfg.server_url', adm.duc_host, true);
 	ext_set_cfg_param('cfg.sdr_hu_dom_sel', connect_dom_sel.DUC, true);
 	connect_update_url();
-   w3_hide('id-warn-ip');
+   //w3_hide('id-warn-ip');
 }
 
 function connect_dom_rev_focus()
@@ -641,7 +641,7 @@ function connect_dom_rev_focus()
 	ext_set_cfg_param('cfg.server_url', dom, true);
 	ext_set_cfg_param('cfg.sdr_hu_dom_sel', connect_dom_sel.REV, true);
 	connect_update_url();
-   w3_hide('id-warn-ip');
+   //w3_hide('id-warn-ip');
 }
 
 function connect_dom_pub_focus()
@@ -962,7 +962,7 @@ function backup_focus()
 	w3_el('id-output-msg').style.height = px(300);
 }
 
-var sd_progress, sd_progress_max = 4*60;		// measured estimate -- in secs (varies with SD card write speed)
+var sd_progress, sd_progress_max = 6*60;		// measured estimate -- in secs (varies with SD card write speed)
 var backup_sd_interval;
 var backup_refresh_icon = w3_icon('', 'fa-refresh fa-spin', 20);
 
@@ -2833,8 +2833,8 @@ function admin_recv(data)
 				admin_sdr_mode = (+param[1])? 0:1;
 				break;
 
-			case "BBAI":
-				admin.BBAI = true;
+			case "rx14_wf0":
+				admin.rx14_wf0 = true;
 				break;
 
 			case "init":

@@ -9,7 +9,7 @@ var kiwi = {
    GPS_fixes: 0,
    wf_fps: 0,
    inactivity_panel: false,
-   is_BBAI: 0,
+   is_multi_core: 0,
    
    // must match rx_cmd.cpp
    modes_l: [ 'am', 'amn', 'usb', 'lsb', 'cw', 'cwn', 'nbfm', 'iq', 'drm', 'usn', 'lsn', 'sam', 'sal', 'sau', 'sas' ],
@@ -1100,7 +1100,7 @@ function admin_stats_cb(audio_dropped, underruns, seq_errors, dp_resets, dp_hist
 function kiwi_too_busy(rx_chans)
 {
 	var s = 'Sorry, the KiwiSDR server is too busy right now ('+ rx_chans+((rx_chans>1)? ' users':' user') +' max). <br>' +
-	'Please check <a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> for more KiwiSDR receivers available world-wide.';
+	'Please check <a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> for more KiwiSDR receivers available world-wide.';
 	kiwi_show_msg(s);
 }
 
@@ -1108,10 +1108,10 @@ function kiwi_exclusive_use()
 {
 	var s = 'Sorry, this Kiwi has been locked for special use. <br>' +
 	'This happens when using an extension (e.g. DRM decoder) that requires all available resources. <br>' +
-	'Please check <a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> for more KiwiSDR receivers available world-wide. <br><br>' +
+	'Please check <a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> for more KiwiSDR receivers available world-wide. <br><br>' +
 	'申し訳ありませんが、このキーウィは特別な使用のためにロックされています。 <br>' +
 	'これは、利用可能なすべてのリソースを必要とする拡張機能（DRM デコーダーなど）を使用している場合に発生します。 <br>' +
-	'世界中で利用できる KiwiSDR レシーバーについては、<a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> を確認してください。';
+	'世界中で利用できる KiwiSDR レシーバーについては、<a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> を確認してください。';
 	kiwi_show_msg(s);
 }
 
@@ -1144,7 +1144,7 @@ function kiwi_24hr_ip_limit(mins, ip)
 {
 	var s = 'Sorry, this KiwiSDR can only be used for '+ mins +' minutes every 24 hours by each IP address.<br>' +
       //'Your IP address is: '+ ip +'<br>' +
-      'Please check <a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> for more KiwiSDR receivers available world-wide.';
+      'Please check <a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> for more KiwiSDR receivers available world-wide.';
 	
 	kiwi_show_error_ask_exemption(s);
 }
@@ -1166,7 +1166,7 @@ function kiwi_down(type, comp_ctr, reason)
 
 	if (type == 1) {
 		s = 'Sorry, software update in progress. Please check back in a few minutes.<br>' +
-			'Or check <a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> for more KiwiSDR receivers available world-wide.';
+			'Or check <a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> for more KiwiSDR receivers available world-wide.';
 		
 		if (comp_ctr > 0 && comp_ctr < 9000)
 			s += '<br>Build: compiling file #'+ comp_ctr;
@@ -1185,7 +1185,7 @@ function kiwi_down(type, comp_ctr, reason)
 	} else {
 		if (reason == null || reason == '') {
 			reason = 'Sorry, this KiwiSDR server is being used for development right now. <br>' +
-				'Please check <a href="http://kiwisdr.com/public" target="_self">kiwisdr.com/public</a> for more KiwiSDR receivers available world-wide.';
+				'Please check <a href="http://rx.kiwisdr.com" target="_self">rx.kiwisdr.com</a> for more KiwiSDR receivers available world-wide.';
 		}
 		s = reason;
 	}
@@ -1271,12 +1271,11 @@ function cpu_stats_cb(o, uptime_secs, ecpu, waterfall_fps)
       first = false;
    }
    var cpus = 'cpu';
-   if (o.cu.length > 1)
-	{
-		cpus += '0';
+   if (o.cu.length > 1) {
+      cpus += '0';
 		for (var i = 1; i < o.cu.length; i++)
-		cpus += ' cpu' + i;
-	}
+		   cpus += ' cpu' + i;
+   }
 	kiwi_cpu_stats_str_long =
 	   w3_inline('',
          w3_text('w3-text-black', 'Beagle: '+ cpus +' '+ user +' usr | '+ sys +' sys | '+ idle +' idle,' + (cputempC? '':' ')) +
@@ -1457,6 +1456,7 @@ function user_cb(obj)
 		}
 		
 		if (obj.c) {
+		   //console.log('SAM carrier '+ obj.c);
 		   var el = w3_el('id-sam-carrier');
 		   if (el) w3_innerHTML(el, 'carrier '+ obj.c.toFixed(1) +' Hz');
 		}
@@ -1715,13 +1715,13 @@ function kiwi_msg(param, ws)
       /*
       // enable DRM mode button
       var el = w3_el('id-button-drm');
-      if (el && kiwi.is_BBAI) {
+      if (el && kiwi.is_multi_core) {
          w3_remove(el, 'class-button-disbled');
          w3_attribute(el, 'onclick', 'mode_button(event, this)');
       }
       */
-		case "is_BBAI":
-		   kiwi.is_BBAI = 1;
+		case "is_multi_core":
+		   kiwi.is_multi_core = 1;
 		   break;
 		
 		case "authkey_cb":

@@ -1,11 +1,61 @@
 CHANGE_LOG
 
-For the Github commit log see here: https://github.com/RaspSDR/Beagle_SDR_GPS/commits/master
+For the Github commit log see here: github.com/jks-prv/Beagle_SDR_GPS/commits/master
+
+v1.395  June 2, 2020
+    Remove references to sdr.hu
+    Prevent "make install" from failing on BBAI if window system is not installed.
+
+v1.394  May 31, 2020
+    Noise blankers and filters:
+        Added the spectral noise reduction filter by Frank, DD4WH and Michael, DL2FW, via the
+        Teensy-ConvolutionSDR and UHSDR projects. See: github.com/df8oe/UHSDR/wiki/Noise-reduction
+        This noise filter works really, really well. Especially for voice signals.
+        A good alternative to the LMS filters.
+    
+    Note that the Wild blanker and all the noise filters (wdsp, LMS, spectral) don't currently work
+    with the modes: IQ, SAS and DRM (i.e. the 2-channel IQ modes). This will be fixed at some point.
+
+v1.392,393  May 28, 2020
+    Noise blankers and filters:
+        Added the Michael Wild noise blanker. Not a lot of operating experience with this yet.
+        It seems not to work on some noise sources compared to the standard blanker.
+        A good test source is 100 kHz Loran-C in AM mode using a UK Kiwi.
+        Increase the gate time (standard blanker) or impulse samples (Wild blanker) to
+        account for the longer Loran-C pulses compared to the usual impulse noise.
+
+        Fixed wdsp filter: the control sliders had no effect previously!
+        Now it works quite well. You have to adjust the gain carefully to prevent overload.
+
+        Added test pulse gain and pulse width controls. And also whether the pulse is
+        applied before or after the passband filtering. The Wild blanker seems only
+        effective on post-filter pulses. Probably because the filter is turning the
+        pre-filter step function pulses into nicer band-limited pulses.
+
+v1.391  May 23, 2020
+    User interface changes:
+        SAL, SAU mode passband image will only show single sideband (just like LSB, USB).
+        Ctrl/alt-click on mode button toggles modes backwards (most useful with SAM modes).
+        Same works with keyboard shortcuts, e.g. ctrl/alt-A toggles SAM modes backwards.
+    
+    Noise blankers and filters:
+        Reworked the audio tab user interface to support multiple blanker/filter algorithms.
+        New algorithms planned but not yet available are greyed-out in the menus.
+        From Warren Pratt's wdsp package added the variable-leak LMS algorithm.
+    
+    Merged Howard Su's RPi changes.
+        Note: RPi is not officially supported by KiwiSDR. Ask for help on the KiwiSDR forum:
+            valentfx.com/vanilla/discussion/1986/port-kiwisdr-to-raspberrypi-3b
+    
+    Bug fixes:
+        Audio recordings made in SAS (synchronous AM stereo) mode now work.
+        Fixed problem with ITU region 2 Kiwis and shift-clicking waterfall in 75/80m band segment.
+        from lazywalker: fixed problems with frequency memory and reload value when transverter offset used.
 
 v1.390  April 23, 2020
     Performance improvements:
         Suggested by @howardsu on Kiwi forum: remove -DDEBUG so assert()'s are not evaluated.
-        	Added new "make debug" target to revert to compiling with -DDEBUG defined.
+            Added new "make debug" target to revert to compiling with -DDEBUG defined.
 
         Christoph's cross-compilation changes: added "make xc" target that allows cross-compiling on
             development host. Alternative to slow compiles on Beagle during development.
@@ -95,7 +145,7 @@ v1.379  February 14, 2020
     Fixed bug in recent network initialization rewrite.
 
 v1.378  February 4, 2020
-    Changes to help diagnose problems with kiwisdr.com/public registration.
+    Changes to help diagnose problems with rx.kiwisdr.com registration.
 
 v1.377  February 1, 2020
     Improve software update reliability.
@@ -153,7 +203,7 @@ v1.368,369  January 11, 2020
         AGC was missing from DRM IQ input. Should now work as well as Dream with weaker signals.
 
 v1.365,366,367  January 10, 2020
-    Decouple kiwisdr.com/public and sdr.hu registration.
+    Decouple rx.kiwisdr.com and sdr.hu registration.
         Can register on either or both.
         Rename admin page tab "sdr.hu" to "Public".
         API key only applies to sdr.hu
@@ -459,7 +509,7 @@ v1.292  June 16, 2019
     Fixed a bunch of masked frequency related bugs including a problem when running in 20 kHz mode.
 
     If a Kiwi has time limits or masked frequencies configured an icon will be included in the
-        status line appearing on sdr.hu and kiwisdr.com/public (i.e. alongside the existing icons
+        status line appearing on sdr.hu and rx.kiwisdr.com (i.e. alongside the existing icons
         indicating 20 kHz mode, GPS enabled and the antenna switch extension available).
         An hour-glass icon if inactivity or 24 hour time limits are configured.
         A red, circle-slash "no entry" icon if masked frequencies are configured.
@@ -614,7 +664,7 @@ v1.281  April 12, 2019
         Kiwi is a carefully balanced compromise to get 4-channel mode to work (i.e. fit in the FPGA
         and have enough Beagle CPU cycles). So the DDSs, mixers, DDCs and FFTs are not perfect.
         Speaking of compromise, when considering FFTs it's important to understand this:
-        https://en.wikipedia.org/wiki/Spectral_leakage
+        en.wikipedia.org/wiki/Spectral_leakage
 
 v1.280  April 8, 2019
     Spectrum improvements:
@@ -995,7 +1045,7 @@ v1.215  August 3, 2018
     Other ADC clock control improvements in IQ extension and "cal ADC clock" menu item.
     Fix race causing incorrect inactivity timeouts under certain circumstances.
     Passband can be specified in the "f=" URL parameter, format same as frequency entry box.
-        See: http://kiwisdr.com/quickstart/index.html#id-user-tune
+        See: kiwisdr.com/quickstart/index.html#id-user-tune
         This is an alternative to specifying the passband alone with "pbw=" or "pb=" parameters.
 
 v1.214  August 1, 2018
@@ -1383,7 +1433,7 @@ v1.145  Nov 18, 2017
     Reverted last IBP scanner commit due to problems on iPad.
 
 v1.144  Nov 17, 2017
-    Improvements to IBP scanner extension from VE3SUN (see http://ve3sun.com/KiwiSDR/IBP)
+    Improvements to IBP scanner extension from VE3SUN (see ve3sun.com/KiwiSDR/IBP)
     Automatically position extension data display when browser window resized.
 
 v1.143  Nov 13, 2017
@@ -1392,10 +1442,10 @@ v1.143  Nov 13, 2017
     Stop IBP_scan waterfall annotations after extension closed.
 
 v1.142  Nov 12, 2017
-    New repository https://github.com/jks-prv/Beagle_GPS
+    New repository github.com/jks-prv/Beagle_GPS
     A version of KiwiSDR with the SDR code removed for people who only want to experiment with GPS.
     Easier to understand and compiles faster than full KiwiSDR repo.
-    Except for the FPGA simulation, this is a replacement for http://www.jks.com/sdgps/sdgps.html
+    Except for the FPGA simulation, this is a replacement for www.jks.com/sdgps/sdgps.html
 
 v1.141  Nov 7, 2017
     Admin webpage tab has textarea input for HTML that is added to the <head> element of

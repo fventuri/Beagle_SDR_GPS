@@ -35,6 +35,7 @@ Boston, MA  02110-1301, USA.
 #include "wspr.h"
 #include "ext_int.h"
 #include "shmem.h"
+#include "rx_noise.h"
 #include "wdsp.h"
 
 #ifdef DRM
@@ -50,7 +51,6 @@ Boston, MA  02110-1301, USA.
 #include <sched.h>
 #include <math.h>
 #include <signal.h>
-#include <fftw3.h>
 
 // copy admin-related configuration from kiwi.json to new admin.json file
 void cfg_adm_transition()
@@ -324,7 +324,7 @@ void update_vars_from_config()
     admcfg_default_bool("onetime_password_check", false, &update_admcfg);
     admcfg_default_string("proxy_server", "proxy.kiwisdr.com", &update_admcfg);
 
-    // decouple kiwisdr.com/public and sdr.hu registration
+    // decouple rx.kiwisdr.com and sdr.hu registration
     bool sdr_hu_register = admcfg_bool("sdr_hu_register", NULL, CFG_REQUIRED);
 	admcfg_bool("kiwisdr_com_register", &err, CFG_OPTIONAL);
     // never set or incorrectly set to false by v1.365,366
@@ -573,8 +573,7 @@ void webserver_collect_print_stats(int print)
 	if (reply != NULL) {
 		int ncpu;
 		char *cpu_ptr = kstr_sp(reply);
-		for (ncpu = 0; ncpu < NCPU; ncpu++)
-		{
+		for (ncpu = 0; ncpu < NCPU; ncpu++) {
 			char buf[10];
 			sprintf(buf, "cpu%d", ncpu);
 			cpu_ptr = strstr(cpu_ptr, buf);
@@ -591,6 +590,7 @@ void webserver_collect_print_stats(int print)
         	}
 		kstr_free(reply);
 		
+		kstr_free(reply);
 	    int cpufreq_kHz = 1000000, temp_deg_mC = 0;
 
 #if defined(CPU_AM5729) || defined(CPU_BCM2837)
