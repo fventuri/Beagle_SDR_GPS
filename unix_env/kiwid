@@ -101,6 +101,9 @@ case "$1" in
         else
             echo "KiwiSDR Detected"
 	fi
+	# start fan
+	gpio mode 26 pwm
+	gpio pwm 26 500
     else
         if test \( ! -f /lib/firmware/${CAPE}.dtbo \) -o \( /lib/firmware/${CAPE}.dts -nt /lib/firmware/${CAPE}.dtbo \) ; then
             echo compile ${DEV} device tree;
