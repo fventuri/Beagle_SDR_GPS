@@ -98,6 +98,7 @@ case "$1" in
         sleep 1
         if test "/sys/bus/i2c/devices/1-0050/eeprom"; then
             echo "RaspSDR Detected"
+	    KIWID_ARGS += " -raspsdr"
         else
             echo "KiwiSDR Detected"
 	fi
