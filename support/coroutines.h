@@ -28,6 +28,7 @@
 #include "timing.h"
 
 #include <setjmp.h>
+#include <pthread.h>
 
 #define	HIGHEST_PRIORITY	7
 
@@ -159,8 +160,8 @@ const char *_TaskName(const char *name, bool free_name);
 #define TaskNameS(name)     _TaskName(name, false)
 #define TaskNameSFree(name) _TaskName(name, true)
 
-char *Task_s(int id);
-char *Task_ls(int id);
+const char *Task_s(int id);
+const char *Task_ls(int id);
 
 #define	TSTAT_MASK		0x00ff
 #define	TSTAT_NC		0
@@ -194,15 +195,10 @@ void _NextTask(const char *s, u4_t param, u_int64_t pc);
 
 typedef struct {
 	u4_t magic_b;
-	bool init;
-	u4_t enter, leave;
 	const char *name;
+	pthread_mutex_t mutex;
 	#define LEN_ENTER_NAME  32
 	char enter_name[LEN_ENTER_NAME];
-	void *owner;
-	void *users;                    // queue of lock users
-	u4_t n_prio_swap, n_prio_inversion;
-	u4_t timer_since_no_owner;
 	u4_t magic_e;
 } lock_t;
 

@@ -75,7 +75,8 @@ else ifeq ($(RPI),true)
 	ARCH = omap
 	CPU = BCM2837
 	PLATFORMS = raspberrypi
-	CFLAGS += -DMULTI_CORE
+	CFLAGS +=
+	LDFLAGS += -pthread
 else
 	ARCH = sitara
 	CPU = AM3359

@@ -226,8 +226,8 @@ static void _spi_dev_init(int spi_clkg, int spi_speed)
         #endif
 	}
 
-	spi_init();
 	init = true;
+	spi_init();
 }
 
 void spi_dev_init(int spi_clkg, int spi_speed)
