@@ -95,7 +95,7 @@ void _sys_panic(const char *str, const char *file, int line)
 }
 
 // NB: when debugging use real_printf() to avoid loops!
-static bool need_newline;
+static __thread bool need_newline;
 
 void real_printf(const char *fmt, ...)
 {
@@ -113,9 +113,9 @@ void real_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
-static bool appending;
-static char *buf, *last_s, *start_s;
-static int brem;
+static __thread bool appending;
+static __thread char *buf, *last_s, *start_s;
+static __thread int brem;
 
 log_save_t *log_save_p;
 
