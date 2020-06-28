@@ -158,6 +158,10 @@ void spi_init()
 	junk = &SPI_SHMEM->spi_junk_miso;
 	prev = junk;
 	junk->status = BUSY;
+}
+
+void spi_start()
+{
 	CreateTaskF(spi_pump, 0, SPIPUMP_PRIORITY, CTF_BUSY_HELPER);
 }
 

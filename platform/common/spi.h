@@ -227,6 +227,7 @@ extern u4_t spi_retry;
 //#define spi_get spi_get_noduplex
 
 void spi_init();
+void spi_start();
 void spi_stats();
 
 void _spi_set(SPI_CMD cmd, uint16_t wparam=0, uint32_t lparam=0);

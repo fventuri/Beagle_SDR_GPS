@@ -198,6 +198,8 @@ void fpga_init() {
 
 	spin_ms(100);
 
+	spi_start();
+
 	// download embedded CPU program binary
 	const char *aout = background_mode? "/usr/local/bin/kiwid.aout" : (BUILD_DIR "/gen/kiwi.aout");
     fp = fopen(aout, "rb");
