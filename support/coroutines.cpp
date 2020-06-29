@@ -194,6 +194,8 @@ static void* ThreadEntry(void* parameter)
     // call user function
     current_task->entry(current_task->user_parameter);
 
+    pthread_cond_destroy(&current->cond);
+    pthread_mutex_destroy(&current->mutex);
     pthread_exit(0);
 }
 
