@@ -32,7 +32,6 @@ Boston, MA  02110-1301, USA.
 #include <stdarg.h>
 #include <ctype.h>
 
-
 // kstr: Kiwi C-string package
 //
 // any kstr_cstr argument = kstr_t|C-string|NULL
@@ -48,6 +47,7 @@ typedef struct kstring_st {
 #define KSTRINGS	1024
 static kstring_t kstrings[KSTRINGS], *kstr_next_free;
 int kstr_nused;
+static lock_t kstr_lock;
 
 void kstr_init()
 {
@@ -59,6 +59,7 @@ void kstr_init()
 	
 	ks->next_free = NULL;
 	kstr_next_free = kstrings;
+	lock_init(&kstr_lock);
 }
 
 static kstring_t *kstr_is(char *s_kstr_cstr)
@@ -88,11 +89,13 @@ static char *kstr_malloc(kstr_malloc_e type, char *s_kstr_cstr, int size)
         ks->size = size;
         return (char *) ks;
 	}
-	
+
+	lock_enter(&kstr_lock);
 	ks = kstr_next_free;
 	assert(ks != NULL);
 	kstr_next_free = ks->next_free;
 	kstr_nused++;
+	lock_leave(&kstr_lock);
 	
     bool externally_malloced = false;
 
@@ -174,9 +177,12 @@ void kstr_free(char *s_kstr_cstr)
 		ks->size = 0;
 		ks->externally_malloced = false;
 		ks->valid = false;
+
+		lock_enter(&kstr_lock);
 		ks->next_free = kstr_next_free;
 		kstr_next_free = ks;
 		kstr_nused--;
+		lock_leave(&kstr_lock);
 	}
 }
 
