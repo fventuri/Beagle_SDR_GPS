@@ -66,6 +66,8 @@ struct mtrace_t {
 
 static int nmt;
 
+#define USE_VALGRIND
+
 static int mt_enter(const char *from, void *ptr, int size)
 {
 	int i;
@@ -580,10 +582,10 @@ int bits_required(u4_t v)
 	return ffs(v) + 1;
 }
 
-u4_t snd_hdr[8];
 
 int snd_file_open(const char *fn, int nchans, double srate)
 {
+    u4_t snd_hdr[8];
     int fd = open(fn, O_WRONLY|O_CREAT|O_TRUNC, 0644);
     if (fd < 0) return fd;
     int srate_i = round(srate);
