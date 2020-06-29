@@ -15,10 +15,11 @@
 // global variables
 u4_t task_medium_priority = TASK_MED_PRI_NEW;
 struct Task{
-    pthread_t pthread;
     int id;
 
     void* user_parameter;
+    void* wake_param;
+
     const char* name;
     funcP_t entry;
     u4_t flags;
@@ -30,6 +31,7 @@ struct Task{
     bool sleeping;
 
     // the object to support sleep/wakeup
+    pthread_t pthread;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
 };
@@ -43,6 +45,20 @@ static __thread struct Task *current;
 
 void TaskInit()
 {
+    for(auto i = 0; i < MAX_TASKS; i++)
+    {
+	Tasks[i].id = i;
+    }
+    Task *current_task = &Tasks[0];
+
+    current_task->entry = (funcP_t)1;
+    current_task->name = "main thread";
+
+    // create the mutex and cond
+    pthread_cond_init(&current_task->cond, NULL);
+    pthread_mutex_init(&current_task->mutex, NULL);
+
+    current = current_task;
 }
 
 void TaskInitCfg()
@@ -56,7 +72,7 @@ void TaskCollect()
 
 void TaskForkChild()
 {
-	panic("We don't support fork");
+	printf("We don't support fork\n");
 }
 
 bool TaskIsChild()
@@ -67,7 +83,7 @@ bool TaskIsChild()
 // Should be a nop
 void TaskPollForInterrupt(ipoll_from_e from)
 {
-	if (!itask) {
+	if (itask == nullptr) {
 		return;
 	}
 
@@ -103,6 +119,8 @@ void _NextTask(const char *s, u4_t param, u_int64_t pc)
 	if (current->killed)
 	{
 		current->entry = nullptr;
+		pthread_cond_destroy(&current->cond);
+		pthread_mutex_destroy(&current->mutex);
 		pthread_exit(NULL);
 		return;
 	}
@@ -114,11 +132,16 @@ void _NextTask(const char *s, u4_t param, u_int64_t pc)
 	}
 
 	TaskPollForInterrupt(CALLED_WITHIN_NEXTTASK);
+	pthread_yield();
 }
 
 void TaskRemove(int id)
 {
 	Tasks[id].killed = true;
+	if (id == current->id)
+	{
+		_NextTask(NULL, 0, 0);
+	}
 }
 
 // wait on the current task's sleep condition variable
@@ -137,18 +160,21 @@ void *_TaskSleep(const char *reason, int usec, u4_t *wakeup_test)
     ret = pthread_mutex_lock(&current->mutex);
     current->sleeping = true;
     if (usec > 0)
-	ret = pthread_cond_wait(&current->cond, &current->mutex);
-    else
 	ret = pthread_cond_timedwait(&current->cond, &current->mutex,
 			&max_wait);
+    else
+	ret = pthread_cond_wait(&current->cond, &current->mutex);
     current->sleeping = false;
     ret = pthread_mutex_unlock(&current->mutex);	
+
+    return current->wake_param;
 }
 
 // Wakeup the sepecific task via signal the condition variable
 void TaskWakeup(int id, u4_t flags, void *wake_param)
 {
-    pthread_mutex_lock(&Tasks[id].mutex);	
+    pthread_mutex_lock(&Tasks[id].mutex);
+    Tasks[id].wake_param = wake_param;
     pthread_cond_signal(&Tasks[id].cond);
     pthread_mutex_unlock(&Tasks[id].mutex);	
 }
@@ -175,12 +201,11 @@ static void* ThreadEntry(void* parameter)
 int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t flags, int f_arg)
 {
     struct Task *current_task = nullptr;
-    for(auto i = 0; i < MAX_TASKS; i++)
+    for(auto i = 1; i < MAX_TASKS; i++)
     {
         if (Tasks[i].entry == nullptr)
         {
             current_task = &Tasks[i];
-	    current_task->id = i;
             break;
         }
     }
@@ -192,7 +217,6 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
         panic("create_task: no tasks available");
     }
 
-    memset(current_task, 0, sizeof(Task));
     // Initialize the structure
     current_task->entry = entry;
     current_task->name = name;
@@ -210,12 +234,15 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
 
     pthread_create(&current_task->pthread, &attr, ThreadEntry, current_task);
 
+    pthread_setname_np(current_task->pthread, name);
+
     if (flags & CTF_POLL_INTR) {
 	assert(!itask);
 	itask = current_task;
 	itask_tid = current_task->id;
     }
 
+    return current_task->id;
 }
 
 // TODO
@@ -226,6 +253,7 @@ void TaskDump(u4_t flags)
 //TODO
 int TaskStat(u4_t s1_func, int s1_val, const char *s1_units, u4_t s2_func, int s2_val, const char *s2_units)
 {
+	return 0;
 }
 
 u4_t TaskPriority(int priority)
@@ -317,6 +345,7 @@ void lock_dump()
 bool lock_check()
 {
 	// TODO
+    return false;
 }
 
 void lock_enter(lock_t *lock)
