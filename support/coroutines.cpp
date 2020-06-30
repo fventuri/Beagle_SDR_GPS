@@ -47,7 +47,7 @@ void TaskInit()
 {
     for(auto i = 0; i < MAX_TASKS; i++)
     {
-	Tasks[i].id = i;
+        Tasks[i].id = i;
     }
     Task *current_task = &Tasks[0];
 
@@ -72,24 +72,24 @@ void TaskCollect()
 
 void TaskForkChild()
 {
-	printf("We don't support fork\n");
+    printf("We don't support fork\n");
 }
 
 bool TaskIsChild()
 {
-	return false;
+    return false;
 }
 
 // Should be a nop
 void TaskPollForInterrupt(ipoll_from_e from)
 {
-	if (itask == nullptr) {
-		return;
-	}
+    if (itask == nullptr) {
+        return;
+    }
 
-	if (GPIO_READ_BIT(SND_INTR) && itask->sleeping) {
-		TaskWakeup(itask_tid, TWF_NONE, 0);
-	}
+    if (GPIO_READ_BIT(SND_INTR) && itask->sleeping) {
+        TaskWakeup(itask_tid, TWF_NONE, 0);
+    }
 }
 
 void TaskCheckStacks(bool report)
@@ -98,50 +98,50 @@ void TaskCheckStacks(bool report)
 
 const char* Task_s(int id)
 {
-	return Tasks[id].name;
+    return Tasks[id].name;
 }
 
 // TODO: This is ugly, we should not do this
 void TaskSleepID(int id, int usec)
 {
-	if (current->id == id)
-	{
-		_TaskSleep("TaskSleepId", usec, NULL);
-	}
-	else
-	{
-		current->sleep_pending = usec;
-	}
+    if (current->id == id)
+    {
+        _TaskSleep("TaskSleepId", usec, NULL);
+    }
+    else
+    {
+        current->sleep_pending = usec;
+    }
 }
 
 void _NextTask(const char *s, u4_t param, u_int64_t pc)
 {
-	if (current->killed)
-	{
-		current->entry = nullptr;
-		pthread_cond_destroy(&current->cond);
-		pthread_mutex_destroy(&current->mutex);
-		pthread_exit(NULL);
-		return;
-	}
+    if (current->killed)
+    {
+        current->entry = nullptr;
+        pthread_cond_destroy(&current->cond);
+        pthread_mutex_destroy(&current->mutex);
+        pthread_exit(NULL);
+        return;
+    }
 
-	if (current->sleep_pending > 0)
-	{
-		_TaskSleep("TaskSleepId", current->sleep_pending, NULL);
-		current->sleep_pending = 0;
-	}
+    if (current->sleep_pending > 0)
+    {
+        _TaskSleep("TaskSleepId", current->sleep_pending, NULL);
+        current->sleep_pending = 0;
+    }
 
-	TaskPollForInterrupt(CALLED_WITHIN_NEXTTASK);
-	pthread_yield();
+    TaskPollForInterrupt(CALLED_WITHIN_NEXTTASK);
+    pthread_yield();
 }
 
 void TaskRemove(int id)
 {
-	Tasks[id].killed = true;
-	if (id == current->id)
-	{
-		_NextTask(NULL, 0, 0);
-	}
+    Tasks[id].killed = true;
+    if (id == current->id)
+    {
+        _NextTask(NULL, 0, 0);
+    }
 }
 
 // wait on the current task's sleep condition variable
@@ -151,19 +151,24 @@ void *_TaskSleep(const char *reason, int usec, u4_t *wakeup_test)
     struct timespec max_wait = {0, 0};
     if (usec > 0)
     {
-	ret = clock_gettime(CLOCK_REALTIME, &max_wait);
-	int sec = usec / 1000 / 1000;
-	max_wait.tv_sec += sec;
-	max_wait.tv_nsec += (usec - sec * 1000 * 1000) * 1000;
+        ret = clock_gettime(CLOCK_REALTIME, &max_wait);
+        int sec = usec / 1000 / 1000;
+        max_wait.tv_sec += sec;
+        max_wait.tv_nsec += (usec - sec * 1000 * 1000) * 1000;
     }
 
     ret = pthread_mutex_lock(&current->mutex);
     current->sleeping = true;
     if (usec > 0)
-	ret = pthread_cond_timedwait(&current->cond, &current->mutex,
-			&max_wait);
+    {
+        ret = pthread_cond_timedwait(&current->cond, &current->mutex,
+            &max_wait);
+    }
     else
-	ret = pthread_cond_wait(&current->cond, &current->mutex);
+    {
+        ret = pthread_cond_wait(&current->cond, &current->mutex);
+    }
+
     current->sleeping = false;
     ret = pthread_mutex_unlock(&current->mutex);	
 
@@ -239,9 +244,9 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
     pthread_setname_np(current_task->pthread, name);
 
     if (flags & CTF_POLL_INTR) {
-	assert(!itask);
-	itask = current_task;
-	itask_tid = current_task->id;
+    assert(!itask);
+    itask = current_task;
+    itask_tid = current_task->id;
     }
 
     return current_task->id;
@@ -255,57 +260,57 @@ void TaskDump(u4_t flags)
 //TODO
 int TaskStat(u4_t s1_func, int s1_val, const char *s1_units, u4_t s2_func, int s2_val, const char *s2_units)
 {
-	return 0;
+    return 0;
 }
 
 u4_t TaskPriority(int priority)
 {
-	if (!current) return 0;
-	if (priority == -1) return current->priority;
-	return current->priority;
+    if (!current) return 0;
+    if (priority == -1) return current->priority;
+    return current->priority;
 }
 
 u4_t TaskID()
 {
-	if (!current) return 0;
-	return current->id;
+    if (!current) return 0;
+    return current->id;
 }
 
 const char *_TaskName(const char *name, bool free_name)
 {
     struct Task *ct = current;
     
-	if (!ct) return "main";
-	if (name != NULL) {
+    if (!ct) return "main";
+    if (name != NULL) {
         if (ct->flags & CTF_TNAME_FREE) {
             free((void *) ct->name);
             ct->flags &= ~CTF_TNAME_FREE;
         }
-		ct->name = name;
-		if (free_name) ct->flags |= CTF_TNAME_FREE;
-	}
-	return ct->name;
+        ct->name = name;
+        if (free_name) ct->flags |= CTF_TNAME_FREE;
+    }
+    return ct->name;
 }
 
 void TaskMinRun(u4_t minrun_us)
 {
     struct Task *t = current;
 
-	//t->minrun = minrun_us;
+    //t->minrun = minrun_us;
 }
 
 u4_t TaskFlags()
 {
     struct Task *t = current;
 
-	return t->flags;
+    return t->flags;
 }
 
 void TaskSetFlags(u4_t flags)
 {
     struct Task *t = current;
 
-	t->flags = flags;
+    t->flags = flags;
 }
 
 void *TaskGetUserParam()
@@ -328,35 +333,35 @@ static lock_t *locks[MAX_LOCK_N];
 
 void _lock_init(lock_t *lock, const char *name)
 {
-	memset(lock, 0, sizeof(*lock));
-	lock->name = name;
-	pthread_mutex_init(&lock->mutex, NULL);
+    memset(lock, 0, sizeof(*lock));
+    lock->name = name;
+    pthread_mutex_init(&lock->mutex, NULL);
 }
 
 void lock_register(lock_t *lock)
 {
-	int lock_index = __atomic_fetch_add(&n_lock_list, 1, __ATOMIC_SEQ_CST);
-	locks[lock_index] = lock;
+    int lock_index = __atomic_fetch_add(&n_lock_list, 1, __ATOMIC_SEQ_CST);
+    locks[lock_index] = lock;
 }
 
 void lock_dump()
 {
-	//TODO
+    //TODO
 }
 
 bool lock_check()
 {
-	// TODO
+    // TODO
     return false;
 }
 
 void lock_enter(lock_t *lock)
 {
-	pthread_mutex_lock(&lock->mutex);
+    pthread_mutex_lock(&lock->mutex);
 }
 
 void lock_leave(lock_t *lock)
 {
-	pthread_mutex_unlock(&lock->mutex);
+    pthread_mutex_unlock(&lock->mutex);
 }
 
