@@ -72,9 +72,8 @@ void c2s_admin_setup(void *param)
 
 	// send initial values
 	send_msg(conn, SM_NO_DEBUG, "ADM gps_only_mode=%d", VAL_CFG_GPS_ONLY);
-	#ifdef MULTI_CORE
+	if (is_multi_core)
 	    send_msg(conn, SM_NO_DEBUG, "ADM rx14_wf0=1");
-	#endif
 	send_msg(conn, SM_NO_DEBUG, "ADM init=%d", rx_chans);
 }
 
