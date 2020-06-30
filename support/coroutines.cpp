@@ -25,7 +25,6 @@ struct Task{
     u4_t flags;
     int f_arg;
     int priority;
-    int sleep_pending;
 
     bool killed;
     bool sleeping;
@@ -45,12 +44,9 @@ static __thread struct Task *current;
 
 void TaskInit()
 {
-    for(auto i = 0; i < MAX_TASKS; i++)
-    {
-        Tasks[i].id = i;
-    }
     Task *current_task = &Tasks[0];
 
+    current_task->id = 0;
     current_task->entry = (funcP_t)1;
     current_task->name = "main thread";
 
@@ -110,7 +106,7 @@ void TaskSleepID(int id, int usec)
     }
     else
     {
-        current->sleep_pending = usec;
+        panic("Stop sleep other task.");
     }
 }
 
@@ -125,14 +121,7 @@ void _NextTask(const char *s, u4_t param, u_int64_t pc)
         return;
     }
 
-    if (current->sleep_pending > 0)
-    {
-        _TaskSleep("TaskSleepId", current->sleep_pending, NULL);
-        current->sleep_pending = 0;
-    }
-
     TaskPollForInterrupt(CALLED_WITHIN_NEXTTASK);
-    pthread_yield();
 }
 
 void TaskRemove(int id)
@@ -213,6 +202,8 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
         if (Tasks[i].entry == nullptr)
         {
             current_task = &Tasks[i];
+	    memset(current_task, 0, sizeof(Task));
+	    current_task->id = i;
             break;
         }
     }
@@ -244,9 +235,9 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
     pthread_setname_np(current_task->pthread, name);
 
     if (flags & CTF_POLL_INTR) {
-    assert(!itask);
-    itask = current_task;
-    itask_tid = current_task->id;
+        assert(!itask);
+        itask = current_task;
+        itask_tid = current_task->id;
     }
 
     return current_task->id;
