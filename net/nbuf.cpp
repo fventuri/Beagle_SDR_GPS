@@ -34,7 +34,7 @@
 }
 
 // FIXME: remove this at some point and see if still as stable
-#define NBUF_STATIC_ALLOC
+// #define NBUF_STATIC_ALLOC
 
 #ifdef NBUF_STATIC_ALLOC
 	static lock_t nbuf_lock;
