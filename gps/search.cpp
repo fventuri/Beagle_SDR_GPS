@@ -607,6 +607,7 @@ static int gps_acquire = 1;
 // Conditional because of the large load the acquisition FFT places on the Beagle.
 void SearchTaskRun()
 {
+#if 0
 	if (searchTaskID == -1) return;
 	
 	bool start = false;
@@ -643,4 +644,5 @@ void SearchTaskRun()
 		GPSstat(STAT_ACQUIRE, 0, gps_acquire);
 		TaskWakeup(searchTaskID, TWF_NONE, 0);
 	}
+#endif
 }
