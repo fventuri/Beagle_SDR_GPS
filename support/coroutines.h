@@ -30,16 +30,16 @@
 #include <setjmp.h>
 #include <pthread.h>
 
-#define	HIGHEST_PRIORITY	7
+#define	HIGHEST_PRIORITY	99
 
-#define	SPIPUMP_PRIORITY	7
-#define	DATAPUMP_PRIORITY	6
+#define	SPIPUMP_PRIORITY	90
+#define	DATAPUMP_PRIORITY	80
 
-#define	SND_PRIORITY		5
+#define	SND_PRIORITY		70
 
 extern u4_t task_medium_priority;
-#define TASK_MED_PRI_NEW    3
-#define TASK_MED_PRI_OLD    2
+#define TASK_MED_PRI_NEW    50
+#define TASK_MED_PRI_OLD    50
 
 // an experiment to favor SSTV (an EXT) over WF
 #define	TASK_MED_PRIORITY   -1
@@ -48,14 +48,14 @@ extern u4_t task_medium_priority;
 #define ADMIN_PRIORITY		task_medium_priority
 #define	GPS_PRIORITY		task_medium_priority
 
-#define EXT_PRIORITY_LOW    2
-#define	WF_PRIORITY			2
-#define GPS_ACQ_PRIORITY	2
-#define SERVICES_PRIORITY   2
-#define	MAIN_PRIORITY		2
+#define EXT_PRIORITY_LOW    30
+#define	WF_PRIORITY		30
+#define GPS_ACQ_PRIORITY	30
+#define SERVICES_PRIORITY   30
+#define	MAIN_PRIORITY		30
 
-#define	LOWEST_PRIORITY		0
-#define	NUM_PRIORITY		(HIGHEST_PRIORITY+1)
+#define	LOWEST_PRIORITY		1
+#define	NUM_PRIORITY		(HIGHEST_PRIORITY)
 
 #define	MISC_TASKS			6					// main, stats, spi, data pump, web server, sdr_hu
 #define GPS_TASKS			(GPS_CHANS + 3)		// chan*n + search + solve + stat

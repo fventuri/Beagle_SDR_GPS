@@ -24,7 +24,7 @@ struct Task{
     funcP_t entry;
     u4_t flags;
     int f_arg;
-    int priority;
+    sched_param priority;
 
     bool killed;
     bool sleeping;
@@ -45,6 +45,8 @@ static __thread struct Task *current;
 void TaskInit()
 {
     Task *current_task = &Tasks[0];
+
+    task_medium_priority = TASK_MED_PRI_NEW;
 
     current_task->id = 0;
     current_task->entry = (funcP_t)1;
@@ -219,15 +221,17 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
     current_task->entry = entry;
     current_task->name = name;
     current_task->user_parameter = param;
-    current_task->priority = priority;
+    current_task->priority.sched_priority = priority;
     current_task->flags = flags;
     current_task->f_arg = f_arg;
 
+    printf("Task Priority=%d\n", priority);
     // initialize attributes for thread
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     // set priority
-    // pthread_attr_setschedparam(&attr, );
+    pthread_attr_setschedpolicy(&attr, SCHED_RR);
+    pthread_attr_setschedparam(&attr, &current_task->priority);
 
 
     pthread_create(&current_task->pthread, &attr, ThreadEntry, current_task);
@@ -257,8 +261,8 @@ int TaskStat(u4_t s1_func, int s1_val, const char *s1_units, u4_t s2_func, int s
 u4_t TaskPriority(int priority)
 {
     if (!current) return 0;
-    if (priority == -1) return current->priority;
-    return current->priority;
+    if (priority == -1) return current->priority.sched_priority;
+    return current->priority.sched_priority;
 }
 
 u4_t TaskID()
