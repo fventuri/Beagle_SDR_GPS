@@ -195,7 +195,7 @@ void c2s_sound(void *param)
 	    case FW_SEL_SDR_RX4_WF4: norm_nrx_samps = nrx_samps - ref_nrx_samps; break;
 	    case FW_SEL_SDR_RX8_WF2: norm_nrx_samps = nrx_samps; break;
 	    case FW_SEL_SDR_RX14_WF0: norm_nrx_samps = nrx_samps; break;    // FIXME: this is now the smallest buffer size
-	    case FW_SEL_SDR_RX3_WF3: const float target = 15960.828e-6;      // empirically measured using GPS 1 PPS input
+	    case FW_SEL_SDR_RX3_WF3: const float target = 15960.828e-6 / (1 + raspsdr);      // empirically measured using GPS 1 PPS input
 	                             norm_nrx_samps = (int) (target * SND_RATE_3CH);
 	                             gps_delay2 = target - (float) norm_nrx_samps / SND_RATE_3CH; // fractional part of target delay
 	                             break;
@@ -1241,7 +1241,7 @@ void c2s_sound(void *param)
                 }
             #endif
 
-        } while (bc < 1024);    // multiple loops when compressing
+        } while (bc < 1200 );    // multiple loops when compressing
 
         NextTask("s2c begin");
                 
@@ -1304,9 +1304,6 @@ void c2s_sound(void *param)
         audio_bytes[rx_chan] += aud_bytes;
         audio_bytes[rx_chans] += aud_bytes;     // [rx_chans] is the sum of all audio channels
 
-        NextTask("s2c end");
-	}
-}
 
         #if 0
             static u4_t last_time[MAX_RX_CHANS];
@@ -1334,8 +1331,8 @@ void c2s_sound(void *param)
 		#if 0
 			static u4_t last_time[MAX_RX_CHANS];
 			u4_t now = timer_ms();
-			printf("SND%d: %d %.3fs seq-%d\n", rx_chan, bytes,
-				(float) (now - last_time[rx_chan]) / 1e3, *seq);
+			printf("SND%d: %d %.3fs seq-%d\n", rx_chan, aud_bytes,
+				(float) (now - last_time[rx_chan]) / 1e3, snd->seq);
 			last_time[rx_chan] = now;
 		#endif
 
@@ -1379,6 +1376,9 @@ void c2s_sound(void *param)
                 cps++;
             }
         #endif
+        NextTask("s2c end");
+	}
+}
 
 void c2s_sound_shutdown(void *param)
 {
