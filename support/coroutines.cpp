@@ -28,6 +28,14 @@ struct Task{
 
     bool killed;
     bool sleeping;
+    #define N_REASON 64
+    char reason[N_REASON];
+
+    // stats
+    u4_t s1_func, s2_func;
+    int stat1, stat2;
+    const char *units1, *units2;
+    u4_t spi_retry, cmds;
 
     // the object to support sleep/wakeup
     pthread_t pthread;
@@ -155,6 +163,7 @@ void *_TaskSleep(const char *reason, int usec, u4_t *wakeup_test)
     }
 
     ret = pthread_mutex_lock(&current->mutex);
+    strcpy(current->reason, reason);
     current->sleeping = true;
     if (usec > 0)
     {
@@ -165,7 +174,7 @@ void *_TaskSleep(const char *reason, int usec, u4_t *wakeup_test)
     {
         ret = pthread_cond_wait(&current->cond, &current->mutex);
     }
-
+    current->reason[0] = '\0';
     current->sleeping = false;
     ret = pthread_mutex_unlock(&current->mutex);	
 
@@ -210,8 +219,8 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
         if (Tasks[i].entry == nullptr)
         {
             current_task = &Tasks[i];
-	    memset(current_task, 0, sizeof(Task));
-	    current_task->id = i;
+        memset(current_task, 0, sizeof(Task));
+        current_task->id = i;
             break;
         }
     }
@@ -261,12 +270,69 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
 // TODO
 void TaskDump(u4_t flags)
 {
+    u4_t printf_type = flags & PRINTF_FLAGS;
+
+    int tused = 0;
+    for (unsigned i=0; i < MAX_TASKS; i++) {
+        if (Tasks[i].entry) tused++;
+    }
+
+    lfprintf(printf_type, "\n");
+    lfprintf(printf_type, "TASKS: used %d/%d\n", tused, MAX_TASKS);
+
+
+    for (unsigned i=0; i < MAX_TASKS; i++) {
+        Task* t = &Tasks[i];
+
+        if (!t->entry)
+            continue;
+        int rx_channel = (t->flags & CTF_RX_CHANNEL)? (t->flags & CTF_CHANNEL) : -1;
+
+        lfprintf(printf_type, "%5d %-3s %5d %-3s %s%d %-10s %-24s\n",
+        t->stat1, t->units1? t->units1 : " ", t->stat2, t->units2? t->units2 : " ",
+        (rx_channel != -1)? "c":"", rx_channel,
+        t->name, t->reason);
+    };
 }
 
-//TODO
 int TaskStat(u4_t s1_func, int s1_val, const char *s1_units, u4_t s2_func, int s2_val, const char *s2_units)
 {
-    return 0;
+    int r=0;
+    Task *t = current;
+    
+    t->s1_func |= s1_func & TSTAT_LATCH;
+    if (s1_units) t->units1 = s1_units;
+    switch (s1_func & TSTAT_MASK) {
+        case TSTAT_NC: break;
+        case TSTAT_SET: t->stat1 = s1_val; break;
+        case TSTAT_INCR: t->stat1++; break;
+        case TSTAT_MIN: if (s1_val < t->stat1 || t->stat1 == 0) t->stat1 = s1_val; break;
+        case TSTAT_MAX: if (s1_val > t->stat1) t->stat1 = s1_val; break;
+        default: break;
+    }
+
+    t->s2_func |= s2_func & TSTAT_LATCH;
+    if (s2_units) t->units2 = s2_units;
+    switch (s2_func & TSTAT_MASK) {
+        case TSTAT_NC: break;
+        case TSTAT_SET: t->stat2 = s2_val; break;
+        case TSTAT_INCR: t->stat2++; break;
+        case TSTAT_MIN: if (s2_val < t->stat2 || t->stat2 == 0) t->stat2 = s2_val; break;
+        case TSTAT_MAX: if (s2_val > t->stat2) t->stat2 = s2_val; break;
+        default: break;
+    }
+    
+    if ((t->s1_func|t->s2_func) & TSTAT_CMDS) t->cmds++;
+
+    if ((t->s1_func|t->s2_func) & TSTAT_SPI_RETRY) {
+        t->spi_retry++;
+        r = t->spi_retry;
+        if ((r > 100) && ev_dump) {
+            evNT(EC_DUMP, EV_NEXTTASK, ev_dump, "spi_retry", evprintf("DUMP IN %.3f SEC", ev_dump/1000.0));
+        }
+    }
+
+    return r;
 }
 
 u4_t TaskPriority(int priority)
