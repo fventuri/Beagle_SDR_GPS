@@ -40,6 +40,7 @@ struct Task Tasks[MAX_TASKS];
 
 static int itask_tid = 0;
 static Task* itask = nullptr;
+static Task* busy_helper_task = nullptr;
 static __thread struct Task *current;
 
 void TaskInit()
@@ -121,6 +122,11 @@ void _NextTask(const char *s, u4_t param, u_int64_t pc)
         pthread_mutex_destroy(&current->mutex);
         pthread_exit(NULL);
         return;
+    }
+
+    if (param == NT_BUSY_WAIT)
+    {
+        TaskWakeup(busy_helper_task->id, TWF_NONE, 0);
     }
 
     TaskPollForInterrupt(CALLED_WITHIN_NEXTTASK);
@@ -242,6 +248,11 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
         assert(!itask);
         itask = current_task;
         itask_tid = current_task->id;
+    }
+
+    if (flags & CTF_BUSY_HELPER) {
+        assert(!busy_helper_task);
+        busy_helper_task = current_task;
     }
 
     return current_task->id;
