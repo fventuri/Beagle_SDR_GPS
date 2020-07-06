@@ -70,7 +70,6 @@ void TaskInit()
 
 void TaskInitCfg()
 {
-//TODO: figure out priority of threads
 }
 
 void TaskCollect()
@@ -79,7 +78,6 @@ void TaskCollect()
 
 void TaskForkChild()
 {
-    printf("We don't support fork\n");
 }
 
 bool TaskIsChild()
@@ -240,7 +238,6 @@ int _CreateTask(funcP_t entry, const char *name, void *param, int priority, u4_t
     current_task->flags = flags;
     current_task->f_arg = f_arg;
 
-    printf("Task Priority=%d\n", priority);
     // initialize attributes for thread
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -338,7 +335,7 @@ int TaskStat(u4_t s1_func, int s1_val, const char *s1_units, u4_t s2_func, int s
 u4_t TaskPriority(int priority)
 {
     if (!current) return 0;
-    if (priority == -1) return current->priority.sched_priority;
+
     return current->priority.sched_priority;
 }
 

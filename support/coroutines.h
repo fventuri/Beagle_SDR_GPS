@@ -27,7 +27,6 @@
 #include "config.h"
 #include "timing.h"
 
-#include <setjmp.h>
 #include <pthread.h>
 
 #define	HIGHEST_PRIORITY	99
