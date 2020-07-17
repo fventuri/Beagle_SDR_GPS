@@ -97,14 +97,14 @@ case "$1" in
         # RaspSDR version
         echo "24c32 0x50" > /sys/class/i2c-adapter/i2c-1/new_device
         sleep 1
-        if test -e "/sys/bus/i2c/devices/1-0050/eeprom"; then
+        if test -e "/sys/bus/i2c/devices/1-0054/eeprom"; then
+            echo "KiwiSDR Detected"
+	else
             echo "RaspSDR Detected"
 	    KIWID_ARGS="${KIWID_ARGS} -raspsdr"
 	    # start fan
 	    gpio mode 26 pwm
 	    gpio pwm 26 1024
-        else
-            echo "KiwiSDR Detected"
 	fi
     else
         if test \( ! -f /lib/firmware/${CAPE}.dtbo \) -o \( /lib/firmware/${CAPE}.dts -nt /lib/firmware/${CAPE}.dtbo \) ; then
