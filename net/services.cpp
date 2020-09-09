@@ -534,7 +534,11 @@ static void pvt_NET(void *param)
 
 		// get Ethernet interface MAC address
 		if (!net.mac_valid) {
-            reply = read_file_string_reply("/sys/class/net/eth0/address");
+			const char * addr = "/sys/class/net/eth0/address";
+			if (stat(addr, &st) < 0) {
+				addr = "/sys/class/net/wlan0/address";
+			}
+            reply = read_file_string_reply(addr);
             if (reply != NULL) {
                 n = sscanf(kstr_sp(reply), "%17s", net.mac);
                 assert (n == 1);
