@@ -691,6 +691,7 @@ static void git_commits(void *param)
 
 // routine that processes the output of the registration wget command
 
+/*
 #define RETRYTIME_WORKED	20
 #define RETRYTIME_FAIL		2
 
@@ -728,7 +729,7 @@ static int _reg_SDR_hu(void *param)
         
         // pass sdr.hu reply message back to parent task
         //printf("SET sdr_hu_status %d [%s]\n", strlen(sp2), sp2);
-        kiwi_strncpy(shmem->sdr_hu_status_str, sp2, N_SHMEM_SDR_HU_STATUS_STR);
+        kiwi_strncpy(shmem->status_str_large, sp2, N_SHMEM_STATUS_STR_LARGE);
     }
 	
 	return retrytime_mins;
@@ -793,9 +794,11 @@ static void reg_SDR_hu(void *param)
 		TaskSleepSec(MINUTES_TO_SEC(retrytime_mins));
 	}
 }
+*/
 
 #define RETRYTIME_KIWISDR_COM		15
 //#define RETRYTIME_KIWISDR_COM		1
+#define RETRYTIME_KIWISDR_COM_FAIL		2
 
 static int _reg_kiwisdr_com(void *param)
 {
@@ -892,7 +895,7 @@ static void reg_kiwisdr_com(void *param)
 		    }
 		} else {
 		    reg_kiwisdr_com_status = 0;
-		    retrytime_mins = RETRYTIME_FAIL;    // check frequently for registration to be re-enabled
+		    retrytime_mins = RETRYTIME_KIWISDR_COM_FAIL;    // check frequently for registration to be re-enabled
 		}
 
 		free(cmd_p);
