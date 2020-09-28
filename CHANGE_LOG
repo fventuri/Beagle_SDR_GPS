@@ -2,6 +2,38 @@ CHANGE_LOG
 
 For the Github commit log see here: github.com/jks-prv/Beagle_SDR_GPS/commits/master
 
+v1.408  September 24, 2020
+    TDoA:
+        Easier way to select single "reference location" subcategory (e.g. "utility").
+            Previously you had to select all subcategories by checking the main
+            "reference locations" checkbox. Then uncheck all the subcategories you
+            _didn't_ want. Now simply de-select all subcategories by unchecking the
+            "reference locations" checkbox and check the subcategories you want.
+
+        The reference locations, utility subcategory has been updated to include 5 known
+            and suspected high-frequency stock trading (HFT) transmitting sites in the
+            USA directed towards Europe. If you know of others please post on the forum.
+
+v1.407  September 22, 2020
+    Keyboard shortcuts:
+        Space bar now mutes in addition to existing 'm' key.
+        '!' toggles the waterfall aperture manual/auto menu.
+        'b' 'B' scrolls through the "select band" menu. The frequency update is immediate.
+        'e' 'E' scrolls through the "extension" menu. The extension open is delayed
+            slightly so you can scroll through the menu to the desired entry.
+            These keys can be used while an extension is open to select a new extension.
+            As always hit the escape key to close the open extension.
+
+v1.404,405,406  September 20, 2020
+    DRM extension:
+        Condense schedule format:
+            Station name now overlaps timeline.
+            Links are now info buttons.
+    
+    Aperture auto mode no longer disturbs manual mode WF max/min settings.
+    Expand range of SdrDx colormap a little.
+    In stat tab status message replace sdr.hu with rx.kiwisdr.com
+
 v1.403  September 17, 2020
     DRM extension:
         Added schedule database selection menu. Includes database from drmrx.org

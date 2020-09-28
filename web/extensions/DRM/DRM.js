@@ -445,6 +445,7 @@ function drm_all_status(io, time, frame, FAC, SDC, MSC)
 function drm_lock_setup()
 {
    ext_send('SET lock_set');
+   //alert('# DRM SET lock_set');
 }
 
 function drm_saved_mode()
@@ -458,9 +459,18 @@ function drm_saved_mode()
 
 function drm_tscale(utc)
 {
+   /*
    var pct = drm.mobile? 0.30 : 0.35;
    var factor = drm.mobile? 0.026 : 0.025;
    return ((pct * drm.w_sched) + (utc * factor * drm.w_sched)).toFixed(0);
+   
+   var pct = drm.mobile? 0.03 : 0.04;
+   var factor = drm.mobile? 0.0385 : 0.037;
+   return ((pct * drm.w_sched) + (utc * factor * drm.w_sched)).toFixed(0);
+   */
+
+   var Lmargin = 27, Rmargin = drm.mobile? 0:20, scrollBar = 15;
+   return (Lmargin + utc * (drm.w_sched - Lmargin - Rmargin - scrollBar) / 24 /* hrs */).toFixed(0);
 }
 
 function drm_schedule_static()
@@ -505,7 +515,7 @@ function drm_pre_set_freq(freq, station)
 function drm_click(idx)
 {
    var o = drm.stations[idx];
-   console.log('drm_click '+ o.f +' '+ dq(o.s.toLowerCase()) +' '+ (o.u? o.u:''));
+   //console.log('drm_click idx='+ idx +' '+ o.f +' '+ dq(o.s.toLowerCase()) +' '+ (o.u? o.u:''));
    
    // it's a hack to add passband to the broadcaster's URL link, but didn't want to change the cjson file format again
    // i.e. "<url>?f=/<pb_lo>,<pb_hi>"     e.g. pb value could 2300 or 2.3k
@@ -535,6 +545,7 @@ function drm_schedule_svc()
    var i;
    var s = drm.using_default? w3_div('w3-yellow w3-padding w3-show-inline-block', 'can\'t contact kiwisdr.com<br>using default data') : '';
    var narrow = drm.narrow_listing;
+   var toff = drm_tscale(narrow? 1.0 : 0.25);
 
    for (i = 0; i < drm.stations.length; i++) {
       var o = drm.stations[i];
@@ -544,22 +555,32 @@ function drm_schedule_svc()
       var url = o.u;
       var si = '';
 
+      //var station_name = station.replace('_', narrow? '<br>':' ');
+      //if (narrow) station_name = station_name.replace(',', '<br>');
+      var station_name = station.replace('_', ' ');
+      station_name += '&nbsp;&nbsp;&nbsp;'+ (narrow? '<br>':'') + freq;
+      var count = (station_name.match(/<br>/g) || [1]).length;
+      var em =  count + (narrow? 2:1);
+      var time_h = Math.max(20 * (em-1), 30);
+      //console.log(narrow +'|'+ count +'|'+ em +' '+ station_name);
+
       while (i < drm.stations.length && o.s == station && o.f == freq) {
          var b_px = drm_tscale(o.b);
          var e_px = drm_tscale(o.e);
-         si += w3_div(sprintf('id-drm-sched-time %s|left:%spx; width:%spx;|title="%s"; onclick="drm_click(%d);"',
-            o.v? 'w3-light-green':'', b_px, (e_px - b_px + 2).toFixed(0), freq.toFixed(0), i));
+         si += w3_div(sprintf('id-drm-sched-time %s|left:%spx; width:%spx; height:%dpx|title="%s" onclick="drm_click(%d);"',
+            o.v? 'w3-light-green':'', b_px, (e_px - b_px + 2).toFixed(0), time_h, freq.toFixed(0), i));
          i++;
          o = drm.stations[i];
       }
       i--;
 
-      station = station.replace('_', narrow? '<br>':' ');
-      if (narrow) station = station.replace(',', '<br>');
-      if (url) station = w3_link('w3-link-darker-color', url, station);
-      s += w3_inline('cl-drm-sched-station cl-drm-sched-striped/',
-         w3_div('', station + '&nbsp;&nbsp;&nbsp;'+ (narrow? '<br>':'') + freq),
-         si
+      var info = '';
+      if (url) info = w3_link('w3-valign', url, w3_icon('w3-link-darker-color cl-drm-sched-info', 'fa-info-circle', 24));
+
+      s += w3_inline('cl-drm-sched-station cl-drm-sched-striped/w3-valign',
+         w3_div(sprintf('|font-size:%dem', em), '&nbsp;'),  // sets the parent height since other divs absolutely positioned
+         info, si,
+         w3_div(sprintf('cl-drm-station-name|left:%spx', toff), station_name)
       );
       if (o && o.t == drm.SERVICE) {
          s += w3_div('cl-drm-sched-hr-div cl-drm-sched-striped', '<hr class="cl-drm-sched-hr">');
@@ -601,6 +622,7 @@ function drm_schedule_time_freq(sort_by_freq)
    });
    console.log('sort_by_freq='+ sort_by_freq +' ...');
    console.log(drm.stations_freq);
+   var toff = drm_tscale(narrow? 1.0 : 0.25);
    var last_band = '';
    
    for (i = 0; i < drm.stations_freq.length; i++) {
@@ -608,9 +630,25 @@ function drm_schedule_time_freq(sort_by_freq)
       var station = o.s;
       var freq = o.f;
       var url = o.u;
-      var b_px = drm_tscale(o.b);
-      var e_px = drm_tscale(o.e);
+      var si = '';
       
+      var station_name = station.replace('_', narrow? '<br>':' ');
+      if (narrow) station_name = station_name.replace(',', '<br>');
+      station_name = freq +'&nbsp;&nbsp;&nbsp;'+ (narrow? '<br>':'') + station_name;
+      var count = (station_name.match(/<br>/g) || [1]).length;
+      var em =  count + (narrow? 2:1);
+      var time_h = Math.max(20 * (em-1), 30);
+
+      while (i < drm.stations_freq.length && o.s == station && o.f == freq) {
+         var b_px = drm_tscale(o.b);
+         var e_px = drm_tscale(o.e);
+         si += w3_div(sprintf('id-drm-sched-time %s|left:%spx; width:%spx; height:%dpx|title="%s" onclick="drm_click(%d);"',
+            o.v? 'w3-light-green':'', b_px, (e_px - b_px + 2).toFixed(0), time_h, freq.toFixed(0), o.i));
+         i++;
+         o = drm.stations_freq[i];
+      }
+      i--;
+
       if (sort_by_freq) {
          var band = null;
       
@@ -629,14 +667,13 @@ function drm_schedule_time_freq(sort_by_freq)
          }
       }
 
-      station = station.replace('_', narrow? '<br>':' ');
-      if (narrow) station = station.replace(',', '<br>');
-      if (url) station = w3_link('w3-link-darker-color', url, station);
+      var info = '';
+      if (url) info = w3_link('w3-valign', url, w3_icon('w3-link-darker-color cl-drm-sched-info', 'fa-info-circle', 24));
 
-      s += w3_inline('cl-drm-sched-station cl-drm-sched-striped/',
-         w3_div('', freq + '&nbsp;&nbsp;&nbsp;'+ (narrow? '<br>':'') + station),
-         w3_div(sprintf('id-drm-sched-time %s|left:%spx; width:%spx;|title="%s"; onclick="drm_click(%d);"',
-            o.v? 'w3-light-green':'', b_px, (e_px - b_px + 2).toFixed(0), freq.toFixed(0), o.i))
+      s += w3_inline('cl-drm-sched-station cl-drm-sched-striped/w3-valign',
+         w3_div(sprintf('|font-size:%dem', em), '&nbsp;'),  // sets the parent height since other divs absolutely positioned
+         info, si,
+         w3_div(sprintf('cl-drm-station-name|left:%spx', toff), station_name)
       );
    }
    
@@ -802,7 +839,7 @@ function drm_panel_show(controls_inner, data_html)
 
 function drm_mobile_controls_setup(mobile)
 {
-	drm.mobile = 1;
+	drm.mobile = drm.mobile || 1;
 	console.log('$ mobile drm mobile_laptop_test='+ mobile_laptop_test);
 	drm.w_nom = drm.w_sched = 300;
    drm.h_sched = mobile_laptop_test? 100:230;
@@ -818,6 +855,7 @@ function drm_mobile_controls_setup(mobile)
 
 	ext_panel_show(controls_html, null, null);
 	ext_set_controls_width_height(drm.w_sched + drm.cpanel_margin, drm.h_sched + drm.cpanel_margin);
+	drm_database_cb('drm.database', 0, true);
 
    // in mobile mode close button just closes panel but keeps DRM running
 	var el = w3_el('id-ext-controls-close');
@@ -981,15 +1019,15 @@ function drm_desktop_controls_setup(w_graph)
 
             w3_div(sprintf('id-drm-panel-graph w3-absolute|width:%dpx; height:%dpx; left:%dpx;', w_graph, h, w_lhs + w_msg),
                w3_div(sprintf('id-drm-panel-1-by-svc cl-drm-sched|width:%dpx; height:100%%;', w_graph),
-                  w3_div('', drm_schedule_static()),
+                  w3_div('id-drm-tscale', drm_schedule_static()),
                   w3_div('id-drm-panel-by-svc w3-scroll-y w3-absolute|width:100%; height:100%;', drm.loading_msg)
                ),
                w3_div(sprintf('id-drm-panel-1-by-time cl-drm-sched|width:%dpx; height:100%%;', w_graph),
-                  w3_div('', drm_schedule_static()),
+                  w3_div('id-drm-tscale', drm_schedule_static()),
                   w3_div('id-drm-panel-by-time w3-scroll-y w3-absolute|width:100%; height:100%;', drm.loading_msg)
                ),
                w3_div(sprintf('id-drm-panel-1-by-freq cl-drm-sched|width:%dpx; height:100%%;', w_graph),
-                  w3_div('', drm_schedule_static()),
+                  w3_div('id-drm-tscale', drm_schedule_static()),
                   w3_div('id-drm-panel-by-freq w3-scroll-y w3-absolute|width:100%; height:100%;', drm.loading_msg)
                ),
 
@@ -1101,7 +1139,7 @@ function drm_controls_setup()
             drm.pb_hi = r.num;
          } else
          if ((r = w3_ext_param('mobile', a)).match) {
-            drm.mobile = 1;
+            drm.mobile = r.has_value? r.num : 1;
          } else
          if ((r = w3_ext_param('debug', a)).match) {
             var debug = r.has_value? r.num : 0;
@@ -1112,7 +1150,7 @@ function drm_controls_setup()
    
 	var mobile = ext_mobile_info();
    var w_graph = drm.w_graph_nom - (Math.max(0, 1440 - mobile.width));
-   drm.narrow_listing = (w_graph < drm.w_graph_nom);
+   drm.narrow_listing = (w_graph < drm.w_graph_nom) || (drm.mobile == 2);
    //console.log('$ whg='+ mobile.width +','+ mobile.height +','+ w_graph);
 	
 	//alert('mw='+ mobile.width +' w_graph='+ w_graph);
@@ -1385,9 +1423,11 @@ function drm_display_cb(path, idx, first)
 function drm_station(s)
 {
    if (!drm.desktop) return;
+   var el = w3_el('id-drm-station');
    drm.last_station = s;
    if (s == '') s = '&nbsp;';
-   w3_el('id-drm-station').innerHTML = '<b>'+ (s.replace('_', ' ')) +'</b>';
+   if (!el) return;
+   el.innerHTML = '<b>'+ (s.replace('_', ' ')) +'</b>';
    drm_annotate('magenta');
 }
 
@@ -1415,6 +1455,7 @@ function DRM_blur()
    }
    drm.locked = 0;
    ext_send('SET lock_clear');
+   //alert('# DRM SET lock_clear');
    ext_set_data_height();     // restore default height
 }
 

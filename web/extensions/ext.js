@@ -524,7 +524,7 @@ function ext_panel_init()
 	   }, true);
 }
 
-function extint_panel_show(controls_html, data_html, show_func)
+function extint_panel_show(controls_html, data_html, show_func, show_help_button)
 {
 	extint.using_data_container = (data_html? true:false);
 	//console.log('extint_panel_show using_data_container='+ extint.using_data_container);
@@ -570,7 +570,10 @@ function extint_panel_show(controls_html, data_html, show_func)
 	
 	// help button
 	w3_el('id-confirmation-container').style.height = '';    // some exts modify this
-	var show_help_button = w3_call(extint.current_ext_name +'_help', false);
+	show_help_button = isDefined(show_help_button)?
+	      show_help_button
+	   :
+	      w3_call(extint.current_ext_name +'_help', false);
 	//console.log('show_help_button '+ extint.current_ext_name +' '+ show_help_button);
    w3_set_props('id-ext-controls-help-btn', 'w3-disabled', isUndefined(show_help_button) || show_help_button == false);
    if (show_help_button == 'off')
@@ -606,7 +609,7 @@ function extint_panel_hide()
 	extint_blur_prev(1);
 	
 	// on close, reset extension menu
-	w3_select_value('select-ext', -1);
+	w3_select_value('id-select-ext', -1);
 	
 	resize_waterfall_container(true);	// necessary if an ext was present so wf canvas size stays correct
    freqset_select();
@@ -725,8 +728,8 @@ function extint_focus(is_locked)
          w3_text('w3-medium w3-text-css-yellow',
             'Cannot use extensions while <br> another channel is in DRM mode.'
          );
-      extint_panel_show(s);
-      ext_set_controls_width_height(450, 75);
+      extint_panel_show(s, null, null, 'off');
+      ext_set_controls_width_height(300, 75);
       return;
 	}
 
@@ -745,7 +748,7 @@ function extint_focus(is_locked)
          console.log('extint_focus: '+ ext +' loaded='+ loaded);
          if (loaded) {
             var s = 'loading extension...';
-            extint_panel_show(s);
+            extint_panel_show(s, null, null, 'off');
             ext_set_controls_width_height(325, 45);
             if (kiwi.is_locked)
                console.log('==== IS_LOCKED =================================================');
@@ -757,12 +760,23 @@ function extint_focus(is_locked)
 var extint_first_ext_load = true;
 
 // called on extension menu item selection
-function extint_select(idx)
+function extint_select(value)
 {
 	extint_blur_prev(0);
 	
-	idx = +idx;
-	w3_el('select-ext').value = idx;
+	value = +value;
+	w3_select_value('id-select-ext', value);
+	var menu = w3_el('id-select-ext').childNodes;
+	var name = menu[value+1].innerHTML.toLowerCase();
+	console.log('extint_select val='+ value +' name='+ name);
+	var idx;
+   extint_names_enum(function(i, value, id, id_en) {
+      if (id.toLowerCase().includes(name)) {
+	      console.log('extint_select HIT id='+ id +' id_en='+ id_en +' i='+ i +' value='+ value);
+	      idx = i;
+      }
+   });
+
 	extint.current_ext_name = extint_names[idx];
 	if (extint_first_ext_load) {
 		extint.ws = extint_connect_server();
@@ -782,20 +796,37 @@ function extint_list_json(param)
 	//console.log(extint_names);
 }
 
-function extint_select_menu()
+function extint_names_enum(func)
+{
+   var i, value;
+   for (i = value = 0; i < extint_names.length; i++) {
+      var id = extint_names[i];
+      if (!dbgUs && extint.excl_devl.includes(id)) continue;
+      if (id == 'wspr') id = 'WSPR';      // FIXME: workaround
+
+      // workaround mistake that config enable ids don't match ext names
+      var id_en = id;
+      if (id_en == 'cw_decoder') id_en = 'cw';
+      if (id_en == 'SSTV') id_en = 'sstv';   // don't .toLowerCase() because e.g. 'DRM' is valid
+      if (id_en == 'TDoA') id_en = 'tdoa';
+      
+      func(i, value, id, id_en);
+      value++;
+   }
+}
+
+function extint_select_build_menu()
 {
    //console.log('extint_select_menu rx_chan='+ rx_chan +' is_local='+ kiwi.is_local[rx_chan]);
 	var s = '';
 	if (extint_names && isArray(extint_names)) {
-	   for (var i=0; i < extint_names.length; i++) {
-         var id = extint_names[i];
-         if (!dbgUs && extint.excl_devl.includes(id)) continue;
-         if (id == 'wspr') id = 'WSPR';      // FIXME: workaround
-         var enable = ext_get_cfg_param(id +'.enable');
+	   extint_names_enum(function(i, value, id, id_en) {
+         var enable = ext_get_cfg_param(id_en +'.enable');
+         console.log('extint_select_menu id_en='+ id_en +' en='+ enable);
          if (enable == null || kiwi.is_local[rx_chan]) enable = true;   // enable if no cfg param or local connection
          if (id == 'DRM') kiwi.DRM_enable = enable;
-		   s += '<option value="'+ i +'" '+ (enable? '':'disabled') +'>'+ id +'</option>';
-		}
+		   s += '<option value='+ dq(value) +' kiwi_idx='+ dq(i) +' '+ (enable? '':'disabled') +'>'+ id +'</option>';
+		});
 	}
 	//console.log('extint_select_menu = '+ s);
 	return s;
@@ -805,25 +836,23 @@ function extint_open(name, delay)
 {
    //console.log('extint_open rx_chan='+ rx_chan +' is_local='+ kiwi.is_local[rx_chan]);
    name = name.toLowerCase();
-	for (var i=0; i < extint_names.length; i++) {
-      var id = extint_names[i];
-      if (!dbgUs && extint.excl_devl.includes(id)) continue;
-      if (id == 'wspr') id = 'WSPR';      // FIXME: workaround
-      var enable = ext_get_cfg_param(id +'.enable');
+   var found = 0;
+   extint_names_enum(function(i, value, id, id_en) {
+      var enable = ext_get_cfg_param(id_en +'.enable');
       if (enable == null || kiwi.is_local[rx_chan]) enable = true;   // enable if no cfg param or local connection
 
-		if (enable && id.toLowerCase().includes(name)) {
-			//console.log('extint_open match='+ id);
-			if (delay) {
-			   //console.log('extint_open '+ name +' delay='+ delay);
-			   setTimeout(function() {extint_select(i);}, delay);
-			} else {
-			   //console.log('extint_open '+ name +' NO DELAY');
-			   extint_select(i);
-			}
-			break;
-		}
-	}
+      if (!found && enable && id.toLowerCase().includes(name)) {
+         //console.log('extint_open match='+ id);
+         if (delay) {
+            //console.log('extint_open '+ name +' delay='+ delay);
+            setTimeout(function() { extint_select(value); }, delay);
+         } else {
+            //console.log('extint_open '+ name +' NO DELAY');
+            extint_select(value);
+         }
+         found = 1;
+      }
+   });
 }
 
 function extint_audio_data(data, samps)
