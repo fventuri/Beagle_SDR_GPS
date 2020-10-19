@@ -2,6 +2,31 @@ CHANGE_LOG
 
 For the Github commit log see here: github.com/jks-prv/Beagle_SDR_GPS/commits/master
 
+v1.414  October 10, 2020
+    Added initial waterfall colormap selection to admin page "config" tab.
+        Some people now prefer to use the SdrDx colormap and have it shown to
+        new visitors as the default.
+
+v1.413  October 10, 2020
+    Include Kiwi's set UTC date/time in /status URL response.
+
+v1.412  October 8, 2020
+    Another fix for GPS TOD correction.
+    Do URL redirection during updates and backups.
+
+v1.410,411  October 7, 2020
+    GPS time-of-day (TOD) correction now works even if the Kiwi date is set incorrectly.
+        Previously the Kiwi week day number had to match GPS for TOD correction to work.
+        The GPS code currently does not know how to set the Kiwi date because it does
+        not parse the GPS almanac.
+
+v1.409  October 3, 2020
+    Added "Initial aperture" setting to admin page config tab. This setting determines
+    which waterfall colormap aperture mode, manual or auto, is used as the default for
+    "first time" visitors to your Kiwi. More precisely, for any connection to your Kiwi
+    where the "last aperture set" cookie has not been previously set ("first time"
+    visitors are a subset of that definition).    
+
 v1.408  September 24, 2020
     TDoA:
         Easier way to select single "reference location" subcategory (e.g. "utility").
