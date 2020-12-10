@@ -257,12 +257,30 @@ void update_vars_from_config()
         current_espeed = espeed;
     }
     
+    int mtu = cfg_default_int("ethernet_mtu", 0, &update_cfg);
+    static int current_mtu;
+    if (mtu != current_mtu) {
+        printf("ETH0 ifconfig eth0 mtu %d\n", mtu? 1440 : 1500);
+        non_blocking_cmd_system_child(
+            "kiwi.ifconfig", stprintf("ifconfig eth0 mtu %d", mtu? 1440 : 1500), NO_WAIT);
+        current_mtu = mtu;
+    }
+    
     // fix corruption left by v1.131 dotdot bug
     _cfg_int(&cfg_cfg, "WSPR.autorun", &err, CFG_OPTIONAL|CFG_NO_DOT);
     if (!err) {
         _cfg_set_int(&cfg_cfg, "WSPR.autorun", 0, CFG_REMOVE|CFG_NO_DOT, 0);
         _cfg_set_bool(&cfg_cfg, "index_html_params.RX_PHOTO_LEFT_MARGIN", 0, CFG_REMOVE|CFG_NO_DOT, 0);
         printf("removed v1.131 dotdot bug corruption\n");
+        update_cfg = true;
+    }
+    
+    // enforce waterfall min_dB < max_dB
+    int min_dB = cfg_default_int("init.min_dB", -110, &update_cfg);
+    int max_dB = cfg_default_int("init.max_dB", -10, &update_cfg);
+    if (min_dB >= max_dB) {
+        cfg_set_int("init.min_dB", -110);
+        cfg_set_int("init.max_dB", -10);
         update_cfg = true;
     }
 
@@ -329,14 +347,15 @@ void update_vars_from_config()
     admcfg_default_int("duc_update", 3, &update_admcfg);
     admcfg_default_bool("daily_restart", false, &update_admcfg);
     admcfg_default_int("update_restart", 0, &update_admcfg);
-    admcfg_default_string("ip_address.dns1", "8.8.8.8", &update_admcfg);
-    admcfg_default_string("ip_address.dns2", "8.8.4.4", &update_admcfg);
+    admcfg_default_string("ip_address.dns1", "1.1.1.1", &update_admcfg);
+    admcfg_default_string("ip_address.dns2", "8.8.8.8", &update_admcfg);
     admcfg_default_string("url_redirect", "", &update_admcfg);
     admcfg_default_string("ip_blacklist", "47.88.219.24/24", &update_admcfg);
     admcfg_default_bool("no_dup_ip", false, &update_admcfg);
     admcfg_default_bool("my_kiwi", true, &update_admcfg);
     admcfg_default_bool("onetime_password_check", false, &update_admcfg);
     admcfg_default_string("proxy_server", "proxy.kiwisdr.com", &update_admcfg);
+    admcfg_default_bool("console_local", true, &update_admcfg);
 
     // decouple rx.kiwisdr.com and sdr.hu registration
     bool sdr_hu_register = admcfg_bool("sdr_hu_register", NULL, CFG_REQUIRED);
@@ -356,6 +375,7 @@ void update_vars_from_config()
     admcfg_default_int("rssi_azel_iq", 0, &update_admcfg);
 
     admcfg_default_bool("always_acq_gps", false, &update_admcfg);
+    gps.set_date = admcfg_default_bool("gps_set_date", false, &update_admcfg);
     gps.include_alert_gps = admcfg_default_bool("include_alert_gps", false, &update_admcfg);
     //real_printf("gps.include_alert_gps=%d\n", gps.include_alert_gps);
     gps.include_E1B = admcfg_default_bool("include_E1B", true, &update_admcfg);
@@ -735,10 +755,10 @@ char *rx_users(bool include_ip)
                 char *ext = ext_users[i].ext? kiwi_str_encode((char *) ext_users[i].ext->name) : NULL;
                 const char *ip = include_ip? c->remote_ip : "";
                 asprintf(&sb2, "%s{\"i\":%d,\"n\":\"%s\",\"g\":\"%s\",\"f\":%d,\"m\":\"%s\",\"z\":%d,\"t\":\"%d:%02d:%02d\","
-                    "\"rt\":%d,\"rn\":%d,\"rs\":\"%d:%02d:%02d\",\"e\":\"%s\",\"a\":\"%s\",\"c\":%.1f}",
+                    "\"rt\":%d,\"rn\":%d,\"rs\":\"%d:%02d:%02d\",\"e\":\"%s\",\"a\":\"%s\",\"c\":%.1f,\"fo\":%.0f}",
                     need_comma? ",":"", i, user? user:"", geo? geo:"", c->freqHz,
                     kiwi_enum2str(c->mode, mode_s, ARRAY_LEN(mode_s)), c->zoom, hr, min, sec,
-                    rtype, rn, r_hr, r_min, r_sec, ext? ext:"", ip, wdsp_SAM_carrier(i));
+                    rtype, rn, r_hr, r_min, r_sec, ext? ext:"", ip, wdsp_SAM_carrier(i), freq_offset);
                 if (user) free(user);
                 if (geo) free(geo);
                 if (ext) free(ext);
