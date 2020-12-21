@@ -65,6 +65,7 @@ SND -> GPIO26, pin 37
     >sudo su
     >cd /root
     >git clone https://github.com/RaspSDR/Beagle_SDR_GPS.git
+    >cd Beagle_SDR_GPS
     >make
     >make install
 
