@@ -32,6 +32,9 @@ Boston, MA  02110-1301, USA.
 #include "shmem.h"
 
 #include <sys/file.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -43,7 +46,6 @@ Boston, MA  02110-1301, USA.
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
-#include <sys/mman.h>
 
 #ifdef HOST
 	#include <wait.h>

@@ -10,4 +10,4 @@
 "update_install":true,
 "sdr_hu_register":false,
 "api_key":""
-}
+,"port_ext":8073,"firmware_sel":0,"tlimit_exempt_pwd":"","server_enabled":true,"auto_add_nat":false,"duc_enable":false,"duc_user":"","duc_pass":"","duc_host":"","duc_update":3,"daily_restart":false,"update_restart":0,"ip_address.dns1":"1.1.1.1","ip_address.dns2":"8.8.8.8","url_redirect":"","ip_blacklist":"47.88.219.24/24","no_dup_ip":false,"my_kiwi":true,"onetime_password_check":true,"proxy_server":"proxy.kiwisdr.com","console_local":true,"kiwisdr_com_register":false,"options":0,"GPS_tstamp":true,"use_kalman_position_solver":true,"rssi_azel_iq":0,"always_acq_gps":false,"gps_set_date":false,"include_alert_gps":false,"include_E1B":true,"survey":181,"E1B_offset":4,"acq_Navstar":true,"acq_QZSS":true,"QZSS_prio":false,"acq_Galileo":true,"plot_E1B":true,"ip_address.dns1":"1.1.1.1","ip_address.dns2":"8.8.8.8","ip_address.dns1":"1.1.1.1","ip_address.dns2":"8.8.8.8","ip_address.dns1":"1.1.1.1","ip_address.dns2":"8.8.8.8"}

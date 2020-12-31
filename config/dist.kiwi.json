@@ -1,7 +1,7 @@
 {
 "inactivity_timeout_mins":0,
 "status_msg":"Try other KiwiSDRs world-wide at <a href='http://rx.kiwisdr.com' target='_blank'>rx.kiwisdr.com</a>",
-"index_html_params":{
+"index_html_params":{"HTML_HEAD":"","RX_PHOTO_LEFT_MARGIN":true,
 	"PAGE_TITLE":"KiwiSDR",
 	"RX_PHOTO_FILE":"kiwi/pcb.jpg",
 	"RX_PHOTO_HEIGHT":"350",
@@ -13,7 +13,7 @@
 	"RX_ASL":"30m",
 	"RX_GMAP":"Tauranga/@-37.7039674,176.1586309,12z"
 },
-"init":{
+"init":{"max_dB":-10,"min_dB":-110,"aperture":1,"colormap":0,
     "cw_offset":500
 },
 "rx_name":"0-30 MHz SDR, ZL/KF6VO, New Zealand",
@@ -23,6 +23,5 @@
 "rx_asl":30,
 "rx_antenna":"Mini-Whip",
 "rx_gps":"(-37.631120, 176.172210)",
-"server_url":"kiwisdr.example.com",
-"admin_email":"your_email@example.com"
-}
+"server_url":"","admin_email":"your_email@example.com"
+,"ip_limit_mins":0,"max_freq":-1,"DC_offset_I":-0.02,"DC_offset_Q":-0.02,"DC_offset_20kHz_I":-0.034,"DC_offset_20kHz_Q":-0.034,"S_meter_cal":-13,"waterfall_cal":-13,"contact_admin":true,"chan_no_pwd":0,"owner_info":"","clk_adj":0,"freq_offset":0,"sdr_hu_lo_kHz":0,"sdr_hu_hi_kHz":30000,"ext_ADC_clk":false,"ext_ADC_freq":66665900,"ADC_clk_corr":true,"tdoa_id":"","tdoa_nchans":-1,"ext_api_nchans":-1,"no_wf":false,"test_webserver_prio":false,"test_deadline_update":false,"disable_recent_changes":false,"S_meter_OV_counts":10,"webserver_caching":true,"WSPR":{"syslog":false,"GPS_update_grid":false,"grid":"","callsign":"","autorun":0},"ethernet_speed":0,"ethernet_mtu":0,"sdr_hu_dom_sel":0}

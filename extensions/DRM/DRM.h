@@ -12,7 +12,7 @@
     #ifdef MULTI_CORE
         //#define BBAI_DRM_ASAN
         #ifdef BBAI_DRM_ASAN
-            #warning don't forget to remove BBAI_DRM_ASAN
+            #warning do not forget to remove BBAI_DRM_ASAN
             #define DRM_SHMEM_DISABLE
             #define RX_SHMEM_DISABLE
         #else

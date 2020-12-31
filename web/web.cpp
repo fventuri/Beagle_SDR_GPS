@@ -124,7 +124,7 @@ static const char* edata(const char *uri, bool cache_check, size_t *size, time_t
 		reason = "using server build";
 	}
 #endif
-
+#if 0
 	// some large, seldom-changed files are always loaded from memory, even in development mode
 	if (!data) {
 		data = edata_lookup(edata_always, uri, size);
@@ -165,6 +165,7 @@ static const char* edata(const char *uri, bool cache_check, size_t *size, time_t
 #endif
 		}
 	}
+#endif
 
     if (data)
 	    web_printf_all("%-16s %s, %s, %s: mtime=[%s] %s\n", "EDATA", type, subtype, reason, var_ctime_static(mtime), uri);

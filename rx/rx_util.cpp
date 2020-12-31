@@ -627,7 +627,7 @@ void webserver_collect_print_stats(int print)
 	    int cpufreq_kHz = 1000000, temp_deg_mC = 0;
 
 #if defined(CPU_AM5729) || defined(CPU_BCM2837)
-	    reply = read_file_string_reply("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_cur_freq");
+	    reply = read_file_string_reply("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
 		sscanf(kstr_sp(reply), "%d", &cpufreq_kHz);
 		kstr_free(reply);
 

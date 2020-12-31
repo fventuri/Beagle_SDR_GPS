@@ -199,7 +199,7 @@ void fpga_init() {
 	spin_ms(100);
 
 	// download embedded CPU program binary
-	const char *aout = background_mode? "/usr/local/bin/kiwid.aout" : (BUILD_DIR "/gen/kiwi.aout");
+	const char *aout = background_mode? "/usr/local/bin/kiwid.aout" : (BUILD_DIR "/kiwi.aout");
     fp = fopen(aout, "rb");
     if (!fp) panic("fopen aout");
 

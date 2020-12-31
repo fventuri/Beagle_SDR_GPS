@@ -318,7 +318,7 @@ void web_server_init(ws_init_t type)
 		if (error) {
 			admcfg_set_int_save("port_ext", port);
 		}
-		
+		#if 0
         if (!background_mode) {
             struct stat st;
             scall("stat edata_always", stat(BUILD_DIR "/obj_keep/edata_always.o", &st));
@@ -326,6 +326,7 @@ void web_server_init(ws_init_t type)
             scall("stat edata_always2", stat(BUILD_DIR "/obj_keep/edata_always2.o", &st));
             mtime_obj_keep_edata_always2_o = st.st_mtime;
         }
+		#endif
 
         asprintf(&web_server_hdr, "KiwiSDR_Mongoose/%d.%d", version_maj, version_min);
 		init = TRUE;
