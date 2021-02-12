@@ -87,6 +87,7 @@ var override_pbc = '';
 var nb_click = false;
 var no_geoloc = false;
 var mobile_laptop_test = false;
+var user_url = null;
 
 var freq_memory = [];
 var freq_memory_pointer = -1;
@@ -201,6 +202,8 @@ function kiwi_main()
 	s = 'peak'; if (q[s]) peak_initially = parseInt(q[s]);
 	s = 'no_geo'; if (q[s]) no_geoloc = true;
 	s = 'keys'; if (q[s]) shortcut.keys = q[s];
+	s = 'user'; if (q[s]) user_url = q[s];
+	s = 'u'; if (q[s]) user_url = q[s];
 	// 'no_wf' is handled in kiwi_util.js
 
    // development
@@ -2560,10 +2563,11 @@ function freq_database_lookup(Hz, utility)
    if (utility == 0) {
       if (kHz >= b.NDB_lo && kHz < b.NDB_hi) {
          f = kHz_r1k.toFixed(0);		// 1kHz windows on 1 kHz boundaries for NDBs
-         url += "www.classaxe.com/dx/ndb/rww/signal_list/?mode=signal_list&submode=&targetID=&sort_by=khz&limit=-1&offset=0&show=list&"+
-         "type_DGPS=1&type_NAVTEX=1&type_NDB=1&filter_id=&filter_khz_1="+ f +"&filter_khz_2="+ f +
-         "&filter_channels=&filter_sp=&filter_sp_itu_clause=AND&filter_itu=&filter_continent=&filter_dx_gsq=&region=&"+
-         "filter_listener=&filter_heard_in=&filter_date_1=&filter_date_2=&offsets=&sort_by_column=khz";
+         //url += "www.classaxe.com/dx/ndb/rww/signal_list/?mode=signal_list&submode=&targetID=&sort_by=khz&limit=-1&offset=0&show=list&"+
+         //"type_DGPS=1&type_NAVTEX=1&type_NDB=1&filter_id=&filter_khz_1="+ f +"&filter_khz_2="+ f +
+         //"&filter_channels=&filter_sp=&filter_sp_itu_clause=AND&filter_itu=&filter_continent=&filter_dx_gsq=&region=&"+
+         //"filter_listener=&filter_heard_in=&filter_date_1=&filter_date_2=&offsets=&sort_by_column=khz";
+         url += 'rxx.classaxe.com/en/rww/signals?types=DGPS,NAVTEX,NDB&khz='+ f +'&limit=-1';
       } else
    
       if (kHz < b.LW_lo) {		// VLF/LF
@@ -6340,6 +6344,7 @@ function smeter_init()
 
 var sm_px = 0, sm_timeout = 0, sm_interval = 10;
 var sm_ovfl_showing = false;
+//var audio_ext_adc_ovfl_test = 0;
 
 function update_smeter()
 {
@@ -6362,6 +6367,9 @@ function update_smeter()
 			sm_timeout = sm_interval;
 		}
 	}
+	
+	//audio_ext_adc_ovfl_test++;
+	//audio_ext_adc_ovfl = ((audio_ext_adc_ovfl_test % 16) == 15);
 	
 	if (audio_ext_adc_ovfl && !sm_ovfl_showing) {
 	   w3_hide('id-smeter-dbm-units');
@@ -6388,6 +6396,7 @@ var need_ident = false;
 
 function ident_init()
 {
+   if (user_url) writeCookie('ident', kiwi_strip_tags(decodeURIComponent(user_url), ''));
 	var ident = initCookie('ident', '');
 	ident = kiwi_strip_tags(ident, '');
 	//console.log('IINIT ident_user=<'+ ident +'>');
@@ -7032,6 +7041,7 @@ function panels_setup()
    var nb_algo_s = [ ['off',1], ['std',1], ['Wild',1] ];
    var nr_algo_s = [ ['off',1], ['wdsp',1], ['LMS',1], ['spec',1] ];
 	de_emphasis = readCookie('last_de_emphasis', 0);
+	de_emphasis = w3_clamp(de_emphasis, 0, 1);
 	pan = readCookie('last_pan', 0);
 
 	w3_el('id-optbar-audio').innerHTML =
@@ -7754,7 +7764,8 @@ function toggle_or_set_mute(set)
 }
 
 var de_emphasis = 0;
-var de_emphasis_s = [ 'off', '75us', '50us' ];
+//var de_emphasis_s = [ 'off', '75us', '50us' ];
+var de_emphasis_s = [ 'off', 'on' ];
 
 function de_emp_cb(path, idx, first)
 {

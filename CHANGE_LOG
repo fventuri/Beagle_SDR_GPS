@@ -2,6 +2,27 @@ CHANGE_LOG
 
 For the Github commit log see here: github.com/jks-prv/Beagle_SDR_GPS/commits/master
 
+v1.433  February 12, 2021
+    Timecode extension improvements:
+        Support for JJY(Japan), RBU(Moscow), RTZ(Irkutsk), BPC(China) added.
+        While running AGC delay is temporarily increased to improve noise immunity.
+
+v1.432  February 10, 2021
+    Fix bug with long name/callsign entries containing Unicode characters.
+
+v1.431  February 6, 2021
+    Use new format NDB database at rxx.classaxe.com
+    New URL parameter user=... or u=... that sets name/callsign field in top bar.
+        Useful when the field is not shown on narrow displays but you want to set it.
+
+v1.430  January 30, 2021
+    Make de-emphasis option simply on/off since we've been unable to figure out why
+        the 75/50 usec filter coefficient code doesn't work anymore.
+
+v1.429  January 16, 2021
+    FAX: added Vanino Radio 6455 to Asia menu per forum user Fabrys.
+    By request: add value 1400 to MTU menu on admin page network tab.
+
 v1.428  December 17, 2020
     Reliability fixes.
 
