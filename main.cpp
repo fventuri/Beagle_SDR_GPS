@@ -63,14 +63,14 @@ int fw_sel, fpga_id, rx_chans, wf_chans, nrx_bufs, nrx_samps, nrx_samps_loop, nr
 int p0=0, p1=0, p2=0, wf_sim, wf_real, wf_time, ev_dump=0, wf_flip, wf_start=1, tone, down,
 	rx_cordic, rx_cic, rx_cic2, rx_dump, wf_cordic, wf_cic, wf_mult, wf_mult_gen, do_slice=-1,
 	rx_yield=1000, gps_chans=GPS_CHANS, spi_clkg, spi_speed=SPI_48M, wf_max, rx_num, wf_num,
-	do_gps, do_sdr=1, navg=1, wf_olap, meas, spi_delay=100, do_fft, debian_ver,
+	do_gps, do_sdr=1, navg=1, wf_olap, meas, spi_delay=100, do_fft, debian_ver, monitors_max,
 	noisePwr=-160, unwrap=0, rev_iq, ineg, qneg, fft_file, fftsize=1024, fftuse=1024, bg, alt_port,
 	print_stats, ecpu_cmds, ecpu_tcmds, use_spidev, debian_maj, debian_min, test_flag,
 	gps_debug, gps_var, gps_lo_gain, gps_cg_gain, use_foptim, is_locked, drm_nreg_chans;
 
 u4_t ov_mask, snd_intr_usec;
 
-bool create_eeprom, need_hardware, sdr_hu_debug, have_ant_switch_ext, gps_e1b_only,
+bool create_eeprom, need_hardware, kiwi_reg_debug, have_ant_switch_ext, gps_e1b_only,
     disable_led_task, is_multi_core, kiwi_restart, debug_printfs;
 
 char **main_argv;
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	printf_init();
 
 	for (i=1; i<argc; ) {
-		if (strcmp(argv[i], "-sdr_hu")==0) sdr_hu_debug = TRUE;
+		if (strcmp(argv[i], "-kiwi_reg")==0) kiwi_reg_debug = TRUE;
 		if (strcmp(argv[i], "-bg")==0) { background_mode = TRUE; bg=1; }
 		if (strcmp(argv[i], "-fopt")==0) use_foptim = 1;    // in EDATA_DEVEL mode use foptim version of files
 		if (strcmp(argv[i], "-down")==0) down = 1;
@@ -263,7 +263,6 @@ int main(int argc, char *argv[])
         rx_chans = 4;
         wf_chans = 4;
         snd_rate = SND_RATE_4CH;
-        snd_intr_usec = SND_INTR_4CH;
         rx_decim = RX_DECIM_4CH;
         nrx_bufs = RXBUF_SIZE_4CH / NRX_SPI;
         lprintf("firmware: SDR_RX4_WF4\n");
@@ -273,7 +272,6 @@ int main(int argc, char *argv[])
         rx_chans = 8;
         wf_chans = 2;
         snd_rate = SND_RATE_8CH;
-        snd_intr_usec = SND_INTR_8CH;
         rx_decim = RX_DECIM_8CH;
         nrx_bufs = RXBUF_SIZE_8CH / NRX_SPI;
         lprintf("firmware: SDR_RX8_WF2\n");
@@ -283,7 +281,6 @@ int main(int argc, char *argv[])
         rx_chans = 3;
         wf_chans = 3;
         snd_rate = SND_RATE_3CH;
-        snd_intr_usec = SND_INTR_3CH;
         rx_decim = RX_DECIM_3CH;
         nrx_bufs = RXBUF_SIZE_3CH / NRX_SPI;
         lprintf("firmware: SDR_RX3_WF3\n");
@@ -293,7 +290,6 @@ int main(int argc, char *argv[])
         rx_chans = 14;
         wf_chans = 0;
         snd_rate = SND_RATE_14CH;
-        snd_intr_usec = SND_INTR_14CH;
         rx_decim = RX_DECIM_14CH;
         nrx_bufs = RXBUF_SIZE_14CH / NRX_SPI;
         lprintf("firmware: SDR_RX14_WF0\n");
@@ -320,17 +316,19 @@ int main(int argc, char *argv[])
     nrx_samps = NRX_SAMPS_CHANS(rx_chans);
     nrx_samps_loop = nrx_samps * rx_chans / NRX_SAMPS_RPT;
     nrx_samps_rem = (nrx_samps * rx_chans) - (nrx_samps_loop * NRX_SAMPS_RPT);
-    lprintf("firmware: NRX bufs=%d samps=%d loop=%d rem=%d\n",
-        nrx_bufs, nrx_samps, nrx_samps_loop, nrx_samps_rem);
+    snd_intr_usec = 1e6 / ((float) snd_rate/nrx_samps);
+    lprintf("firmware: RX bufs=%d samps=%d loop=%d rem=%d intr_usec=%d\n",
+        nrx_bufs, nrx_samps, nrx_samps_loop, nrx_samps_rem, snd_intr_usec);
 
     assert(nrx_bufs <= MAX_NRX_BUFS);
     assert(nrx_samps <= MAX_NRX_SAMPS);
     assert(nrx_samps < FASTFIR_OUTBUF_SIZE);    // see data_pump.h
 
-    lprintf("firmware: NWF xfer=%d samps=%d rpt=%d loop=%d rem=%d\n",
+    lprintf("firmware: WF xfer=%d samps=%d rpt=%d loop=%d rem=%d\n",
         NWF_NXFER, NWF_SAMPS, NWF_SAMPS_RPT, NWF_SAMPS_LOOP, NWF_SAMPS_REM);
 
     rx_num = rx_chans, wf_num = wf_chans;
+    monitors_max = (rx_chans * N_CAMP) + N_QUEUERS;
     
 	TaskInitCfg();
 

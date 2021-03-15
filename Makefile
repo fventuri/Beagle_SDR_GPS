@@ -1,5 +1,5 @@
 VERSION_MAJ = 1
-VERSION_MIN = 433
+VERSION_MIN = 441
 
 REPO_NAME = Beagle_SDR_GPS
 DEBIAN_VER = 8.11
@@ -387,6 +387,7 @@ build_makefile_inc:
 	@echo $(VER)
 	@echo PLATFORMS = $(PLATFORMS)
 	@echo DEBUG = $(DEBUG)
+	@echo GDB = $(GDB)
 	@echo XC = $(XC)
 	@echo
 #
@@ -561,7 +562,17 @@ fopt foptim: foptim_files_embed foptim_ext foptim_files_maps
 endif
 
 foptim_list: loptim_embed loptim_ext loptim_maps
+
+CLEAN_MIN_GZ_2 = $(wildcard $(CLEAN_MIN_GZ))
+ifeq ($(CLEAN_MIN_GZ_2),)
 foptim_clean: roptim_embed roptim_ext roptim_maps
+	@echo "nothing to foptim_clean"
+else
+foptim_clean: roptim_embed roptim_ext roptim_maps
+	@echo "removing:"
+	@-ls -la $(CLEAN_MIN_GZ_2)
+	@-rm $(CLEAN_MIN_GZ_2)
+endif
 
 FILES_EMBED_SORTED_NW = $(sort $(EMBED_NW) $(EXT_EMBED_NW) $(PKGS_MAPS_EMBED_NW))
 FILES_ALWAYS_SORTED_NW = $(sort $(FILES_ALWAYS))
@@ -866,7 +877,7 @@ endif
 
 V_DIR = ~/shared/shared
 
-ifeq ($(XC),) ## do not copy bit streams from ~/shared/shared when cross-compiling
+ifeq ($(XC),) ## do not copy bit streams from $(V_DIR) when cross-compiling
 ifeq ($(DEBIAN_DEVSYS),$(DEVSYS))
 
 KiwiSDR.rx4.wf4.bit: $(V_DIR)/KiwiSDR.rx4.wf4.bit
@@ -1241,7 +1252,7 @@ ifeq ($(DEBIAN_DEVSYS),$(DEVSYS))
 copy_to_git:
 	@(echo 'current dir is:'; pwd)
 	@echo
-	@(cd $(GITAPP)/$(REPO_NAME); echo 'repo branch set to:'; pwd; git branch)
+	@(cd $(GITAPP)/$(REPO_NAME); echo 'repo branch set to:'; pwd; git --no-pager branch)
 	@echo '################################'
 #	@echo 'DANGER: #define MINIFY_WEBSITE_DOWN'
 #	@echo '################################'
@@ -1253,7 +1264,7 @@ copy_to_git:
 copy_from_git:
 	@(echo 'current dir is:'; pwd)
 	@echo
-	@(cd $(GITAPP)/$(REPO_NAME); echo 'repo branch set to:'; pwd; git branch)
+	@(cd $(GITAPP)/$(REPO_NAME); echo 'repo branch set to:'; pwd; git --no-pager branch)
 	@echo -n 'are you sure? '
 	@read not_used
 	make clean_dist

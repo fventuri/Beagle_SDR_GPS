@@ -18,13 +18,13 @@ var extint = {
    // extensions not subject to DRM lockout
    // FIXME: allow C-side API to specify
    no_lockout: [ 'noise_blank', 'noise_filter', 'ant_switch', 'iframe', 'colormap', 'devl' ],
-   excl_devl: [ 'sig_gen', 'devl', 's4285' ]
+   excl_devl: [ 'devl', 's4285' ],
+   
+   OPT_NOLOCAL: 1,
 };
 
 var devl = {
-   in1: 1,
-   in2: 0,
-   in3: 0
+   p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0
 };
 
 function ext_switch_to_client(ext_name, first_time, recv_func)
@@ -186,9 +186,14 @@ function ext_get_mode()
 	return cur_mode;
 }
 
-function ext_is_IQ_or_stereo_mode()
+function ext_is_IQ_or_stereo_mode(mode)
 {
-   return (cur_mode == 'drm' || cur_mode == 'iq' || cur_mode == 'sas');
+   return (mode == 'drm' || mode == 'iq' || mode == 'sas' || mode == 'qam');
+}
+
+function ext_is_IQ_or_stereo_curmode()
+{
+   return ext_is_IQ_or_stereo_mode(cur_mode);
 }
 
 function ext_get_prev_mode()
@@ -371,6 +376,10 @@ function ext_valpwd(conn_type, pwd, ws)
    if (kiwi_url_param(['p', 'prot', 'protected'], 'true', null) != null && conn_type != 'admin')
       conn_type = 'prot';
 	//console.log('SET auth t='+ conn_type +' p='+ pwd + ipl);
+	
+	var options = 0;
+	if (kiwi_url_param('nolocal')) options |= extint.OPT_NOLOCAL;
+	if (options != 0) ext_send('SET options='+ options);
 
 	ext_send('SET auth t='+ conn_type +' p='+ pwd + ipl, ws);
 	// the server reply then calls extint_valpwd_cb() below
@@ -579,7 +588,7 @@ function extint_panel_show(controls_html, data_html, show_func, show_help_button
 	// some exts change these -- change back to default
 	ext_set_data_height();     // restore default height
 	w3_el('id-ext-controls').style.zIndex = 150;
-   w3_attribute('id-ext-controls-close-img', 'src', 'icons/close.24.png');
+   w3_create_attribute('id-ext-controls-close-img', 'src', 'icons/close.24.png');
 	
 	var el = w3_el('id-ext-controls-container');
 	el.innerHTML = controls_html;
@@ -644,13 +653,21 @@ function extint_panel_hide()
    extint.displayed = false;
 }
 
-function extint_help_click()
+function extint_help_click_now()
+{
+	extint.help_displayed = w3_call(extint.current_ext_name +'_help', true);
+}
+
+function extint_help_click(delay)
 {
    // will send click event even if w3-disabled!
    if (w3_contains('id-ext-controls-help-btn', 'w3-disabled')) return;
    console.log(extint.current_ext_name +'_help_click CLICKED');
    
-	extint.help_displayed = w3_call(extint.current_ext_name +'_help', true);
+   if (delay)
+      setTimeout(function() { extint_help_click_now(); }, 2000);
+   else
+      extint_help_click_now();
 }
 
 function extint_environment_changed(changed)
@@ -829,6 +846,7 @@ function extint_names_enum(func)
    for (i = value = 0; i < extint_names.length; i++) {
       var id = extint_names[i];
       if (!dbgUs && extint.excl_devl.includes(id)) continue;
+      if (id == 'sig_gen' && (rx_chan != 0 || rx_chans >= 14)) continue;   // sig gen only visible to chan 0
       if (id == 'wspr') id = 'WSPR';      // FIXME: workaround
 
       // workaround mistake that config enable ids don't match ext names

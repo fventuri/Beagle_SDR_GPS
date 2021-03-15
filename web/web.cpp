@@ -510,12 +510,13 @@ void reload_index_params()
 	iparams_add("GEN_LIST_CSS", kstr_sp(sb));
 	kstr_free(sb);
 	
-	const char *gen_list_js[2][11] = {
+	const char *gen_list_js[2][12] = {
 	    {
 		    "kiwi/kiwi_util.js",
 		    "kiwi/kiwi.js",
 		    "kiwi/kiwi_ui.js",
 		    "kiwi/w3_util.js",
+		    "kiwi/monitor.js",
 		    "openwebrx.js",
 		    "ima_adpcm.js",
 		    "audio.js",
@@ -614,9 +615,6 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
     char remote_ip[NET_ADDRSTRLEN];
     check_if_forwarded(NULL, mc, remote_ip);
     
-    bool is_sdr_hu = ip_match(remote_ip, &net.ips_sdr_hu);
-    //printf("is_sdr_hu=%d %s %s\n", is_sdr_hu, remote_ip, mc->uri);
-		
     //#define WEB_PRINTF_ON_URL
     #ifdef WEB_PRINTF_ON_URL
         web_caching_debug |= (strstr(mc->uri, "extensions") != NULL)? 3:0;
@@ -639,8 +637,8 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
 	    if (mc->cache_info.cached)
             web_printf_cached("%-16s %6s %11s %4s %3s %4s %5s %s\n", "webserver", "-", mc->cache_info.cached? "304-CACHED":"NO_CACHE", "", "", "", "", mc->uri);
 
-		web_printf_all("%-16s %s:%05d%s %s (etag_match=%c not_mod_since=%c) mtime=[%s]", "MG_CACHE_RESULT",
-			remote_ip, mc->remote_port, is_sdr_hu? "[sdr.hu]":"",
+		web_printf_all("%-16s %s:%05d %s (etag_match=%c not_mod_since=%c) mtime=[%s]", "MG_CACHE_RESULT",
+			remote_ip, mc->remote_port,
 			mc->cache_info.cached? "### CLIENT_CACHED ###":"NOT_CACHED", mc->cache_info.etag_match? 'T':'F', mc->cache_info.not_mod_since? 'T':'F',
 			var_ctime_static(&mc->cache_info.st.st_mtime));
 
@@ -659,7 +657,6 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
 		}
 		
 		web_printf_all(" client=[%s]\n", var_ctime_static(&mc->cache_info.client_mtime));
-		assert(!is_sdr_hu);
 		return MG_TRUE;
 	}
 	
@@ -681,7 +678,10 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
         o_uri = (char *) "index.html";
 
         // Kiwi URL redirection
-        if (rx_count_server_conns(INCLUDE_INTERNAL) == rx_chans || down || update_in_progress || backup_in_progress) {
+        // don't redirect if camp specified in URL
+        bool camp = (mc->query_string && (kiwi_str_begins_with((char *) mc->query_string, "camp") || strstr(mc->query_string, "&camp")));
+        bool all_chans_full = (rx_count_server_conns(INCLUDE_INTERNAL) == rx_chans);
+        if ((!camp && all_chans_full) || down || update_in_progress || backup_in_progress) {
             char *url_redirect = (char *) admcfg_string("url_redirect", NULL, CFG_REQUIRED);
             if (url_redirect != NULL && *url_redirect != '\0') {
             
@@ -771,9 +771,14 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
         edata_data = edata_with_file_ext(&uri, FALSE, &free_uri, prefix_kiwi, evt == MG_CACHE_INFO, &edata_size, &mtime, &is_min, &is_gzip, &is_file);
     }
 
-    // process query string parameters even if file is cached
+    // Process query string parameters even if file is cached.
+    // Query string is only available on index.html connection (uri='/') but qs parameters
+    // need to be passed to subsequent web socket connections.
+    // How to do this? mc is different for each connection. Can only really be done by
+    // js-side passing qs (which it has access to) on a web socket command.
     suffix = strrchr(uri, '.');
     if (edata_data && suffix && strcmp(suffix, ".html") == 0 && mc->query_string) {
+        //printf("--> QS uri=%s qs=%s\n", mc->uri, mc->query_string);
         webserver_caching = cfg_bool("webserver_caching", NULL, CFG_REQUIRED);
 
         int ctrace;
@@ -789,13 +794,15 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
                 web_nocache = false;
                 printf("WEB cache\n");
             } else
-            if (strcmp(qs[i], "nolocal") == 0) {
-                conn_nolocal = true;
-                printf("WEB nolocal\n");
-            } else
             if (sscanf(qs[i], "ctrace=%d", &ctrace) == 1) {
                 web_caching_debug = ctrace;
                 printf("WEB ctrace=%d\n", web_caching_debug);
+            } else
+            
+            // needed before connection established, so can't use CMD_OPTIONS mechanism
+            // (a slight race condition if there are multiple simultaneous connections)
+            if (strcmp(qs[i], "camp") == 0) {
+                force_camp = true;
             } else {
                 char *su_m = NULL;
                 if (sscanf(qs[i], "su=%256ms", &su_m) == 1) {
@@ -954,8 +961,8 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
     mc->cache_info.st.st_mtime = mtime;
 
     if (!(isAJAX && evt == MG_CACHE_INFO)) {		// don't print for isAJAX + MG_CACHE_INFO nop case
-        web_printf_all("%-16s %s:%05d%s size=%6d dirty=%d mtime=[%s] %s %s %s%s\n", (evt == MG_CACHE_INFO)? "MG_CACHE_INFO" : "MG_REQUEST",
-            remote_ip, mc->remote_port, is_sdr_hu? "[sdr.hu]":"",
+        web_printf_all("%-16s %s:%05d size=%6d dirty=%d mtime=[%s] %s %s %s%s\n", (evt == MG_CACHE_INFO)? "MG_CACHE_INFO" : "MG_REQUEST",
+            remote_ip, mc->remote_port,
             mc->cache_info.st.st_size, dirty, var_ctime_static(&mtime), isAJAX? mc->uri : uri, mg_get_mime_type(isAJAX? mc->uri : uri, "text/plain"),
             (mc->query_string != NULL)? "qs:" : "", (mc->query_string != NULL)? mc->query_string : "");
     }
@@ -963,10 +970,10 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
     bool isImage = (suffix && (strcmp(suffix, ".png") == 0 || strcmp(suffix, ".jpg") == 0 || strcmp(suffix, ".ico") == 0));
     int rtn = MG_TRUE;
     if (evt == MG_CACHE_INFO) {
-        if (dirty || isAJAX || is_sdr_hu || web_nocache || !webserver_caching) {
-            //web_printf_all("%-16s NO CACHE %s%s\n", "MG_CACHE_INFO", is_sdr_hu? "sdr.hu " : "", uri);
-            web_printf_all("%-16s NO CACHE %s%s%s%s\n", "MG_CACHE_INFO",
-                dirty? "dirty-%[] " : "", isAJAX? "AJAX " : "", is_sdr_hu? "sdr.hu " : "", uri);
+        if (dirty || isAJAX || web_nocache || !webserver_caching) {
+            //web_printf_all("%-16s NO CACHE %s\n", "MG_CACHE_INFO", uri);
+            web_printf_all("%-16s NO CACHE %s%s%s\n", "MG_CACHE_INFO",
+                dirty? "dirty-%[] " : "", isAJAX? "AJAX " : "", uri);
             rtn = MG_FALSE;		// returning false here will prevent any 304 decision based on the mtime set above
         }
     } else {
@@ -986,9 +993,9 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
             mg_send_header(mc, "Access-Control-Allow-Origin", "*");
             hdr_type = "AJAX";
         } else
-        if (web_nocache || !webserver_caching || is_sdr_hu) {    // sdr.hu doesn't like our new caching headers for the avatar
+        if (web_nocache || !webserver_caching) {
             mg_send_header(mc, "Content-Type", mg_get_mime_type(uri, "text/plain"));
-            hdr_type = is_sdr_hu? "SDR.HU" : "NO-CACHE";
+            hdr_type = "NO-CACHE";
         } else {
             mg_send_standard_headers(mc, uri, &mc->cache_info.st, "OK", (char *) "", true);
             // Cache image files for a fixed amount of time to keep, e.g.,
@@ -1018,10 +1025,7 @@ int web_request(struct mg_connection *mc, enum mg_event evt) {
         }
         web_printf_sent("%s\n", uri);
         
-        //if (is_sdr_hu) mg_send_header(mc, "Content-Length", stprintf("%d", edata_size));
-        
-        if (!is_sdr_hu)
-            mg_send_header(mc, "Server", web_server_hdr);
+        mg_send_header(mc, "Server", web_server_hdr);
         
         evWS(EC_EVENT, EV_WS, 0, "WEB_SERVER", "mg_send_data..");
         mg_send_data(mc, kstr_sp((char *) edata_data), edata_size);

@@ -125,7 +125,7 @@ void c2s_sound_init()
 	//evSnd(EC_DUMP, EV_SND, 10000, "rx task", "overrun");
 	
 	if (do_sdr) {
-		spi_set(CmdSetGen, 0, 0);
+		spi_set(CmdSetGenFreq, 0, 0);
 		spi_set(CmdSetGenAttn, 0, 0);
 	}
 }
@@ -158,6 +158,7 @@ void c2s_sound(void *param)
 	int rx_chan = conn->rx_channel;
 	snd_t *snd = &snd_inst[rx_chan];
 	wf_inst_t *wf = &WF_SHMEM->wf_inst[rx_chan];
+	rx_chan_t *rxc = &rx_channels[rx_chan];
 	rx_dpump_t *rx = &rx_dpump[rx_chan];
     iq_buf_t *iq = &RX_SHMEM->iq_buf[rx_chan];
 	
@@ -224,8 +225,17 @@ void c2s_sound(void *param)
 	#define N_RSSI 65
 	float rssi_q[N_RSSI];
 	int squelch=0, squelch_on_seq=-1, tail_delay=0;
-	bool sq_init, squelched=false;
-	
+	bool sq_init=false, squelched=false;
+
+	// Overload muting stuff
+	bool mute_overload = true; // activate the muting when overloaded
+	bool squelched_overload = false; // squelch flag specific for the overloading
+	bool overload_before = false; // were we overloaded in the previous instant?
+	bool overload_flag = false; // are we overloaded now?
+	int overload_timer = -1; // keep track of when we stopped being overloaded to allow a decay
+	//float max_thr = -35; // this is the maximum signal in dBm before muting (now a global config parameter)
+	float last_max_thr = max_thr;
+
 	gps_timestamp_t *gps_tsp = &gps_ts[rx_chan];
 	memset(gps_tsp, 0, sizeof(gps_timestamp_t));
 
@@ -344,9 +354,9 @@ void c2s_sound(void *param)
                     if (mode != _mode || n == 5) {
 
                         // when switching out of IQ or DRM modes: reset AGC, compression state
-                        bool IQ_or_DRM_or_SAS = (mode == MODE_IQ || mode == MODE_DRM || mode == MODE_SAS);
-                        bool new_IQ_or_DRM_or_SAS = (_mode == MODE_IQ || _mode == MODE_DRM || _mode == MODE_SAS);
-                        if (IQ_or_DRM_or_SAS && !new_IQ_or_DRM_or_SAS && (cmd_recv & CMD_AGC)) {
+                        bool IQ_or_DRM_or_stereo = (mode == MODE_IQ || mode == MODE_DRM || mode == MODE_SAS || mode == MODE_QAM);
+                        bool new_IQ_or_DRM_or_stereo = (_mode == MODE_IQ || _mode == MODE_DRM || _mode == MODE_SAS || _mode == MODE_QAM);
+                        if (IQ_or_DRM_or_stereo && !new_IQ_or_DRM_or_stereo && (cmd_recv & CMD_AGC)) {
                             //cprintf(conn, "SND out IQ mode -> reset AGC, compression\n");
                             m_Agc[rx_chan].SetParameters(agc, hang, thresh, manGain, slope, decay, frate);
                             memset(&snd->adpcm_snd, 0, sizeof(ima_adpcm_state_t));
@@ -357,7 +367,7 @@ void c2s_sound(void *param)
                         }
 
                         // reset SAM demod on non-SAM to SAM transition
-                        if ((_mode >= MODE_SAM && _mode <= MODE_SAS) && !(mode >= MODE_SAM && mode <= MODE_SAS)) {
+                        if ((_mode >= MODE_SAM && _mode <= MODE_QAM) && !(mode >= MODE_SAM && mode <= MODE_QAM)) {
                             wdsp_SAM_reset(rx_chan);
                         }
 
@@ -489,10 +499,10 @@ void c2s_sound(void *param)
                     if (gen != _gen) {
                         gen = _gen;
                         f_phase = gen * kHz / conn->adc_clock_corrected;
-                        u4_t u4_phase = (u4_t) round(f_phase * pow(2,32));
-                        //printf("sound %d: %s %.3f kHz phase %.3f 0x%08x\n", rx_chan, gen? "GEN_ON":"GEN_OFF", gen, f_phase, u4_phase);
+                        i_phase = (u64_t) round(f_phase * pow(2,48));
+                        //printf("sound %d: %s %.3f kHz phase %.3f 0x%012llx\n", rx_chan, gen? "GEN_ON":"GEN_OFF", gen, f_phase, i_phase);
                         if (do_sdr) {
-                            spi_set(CmdSetGen, 0, u4_phase);
+                            spi_set3(CmdSetGenFreq, rx_chan, (i_phase >> 16) & 0xffffffff, i_phase & 0xffff);
                             ctrl_clr_set(CTRL_USE_GEN, gen? CTRL_USE_GEN:0);
                         }
                         if (rx_chan == 0) g_genfreq = gen * kHz / ui_srate;
@@ -780,7 +790,7 @@ void c2s_sound(void *param)
 		// no keep-alive seen for a while or the bug where the initial cmds are not received and the connection hangs open
 		// and locks-up a receiver channel
 		conn->keep_alive = timer_sec() - conn->keepalive_time;
-		bool keepalive_expired = (!conn->internal_connection && conn->keep_alive > KEEPALIVE_SEC);
+		bool keepalive_expired = (!conn->internal_connection && conn->keep_alive > (conn->auth? KEEPALIVE_SEC : KEEPALIVE_SEC_NO_AUTH));
 		bool connection_hang = (conn->keepalive_count > 4 && cmd_recv != CMD_ALL);
 		if (keepalive_expired || connection_hang || conn->inactivity_timeout || conn->kick) {
 			//if (keepalive_expired) clprintf(conn, "SND KEEP-ALIVE EXPIRED\n");
@@ -788,7 +798,10 @@ void c2s_sound(void *param)
 			//if (conn->inactivity_timeout) clprintf(conn, "SND INACTIVITY T/O\n");
 			//if (conn->kick) clprintf(conn, "SND KICK\n");
 			
-			if (!conn->auth) send_msg(conn, SM_NO_DEBUG, "MSG password_timeout");
+			if (keepalive_expired && !conn->auth) {
+			    cprintf(conn, "PWD entry timeout\n");
+			    send_msg(conn, SM_NO_DEBUG, "MSG password_timeout");
+			}
 		
 			// Ask waterfall task to stop (must not do while, for example, holding a lock).
 			// We've seen cases where the sound connects, then times out. But the w/f has never connected.
@@ -840,17 +853,17 @@ void c2s_sound(void *param)
 		#define SND_FLAG_LITTLE_ENDIAN  0x80
 		
 		bool isNBFM = (mode == MODE_NBFM);
-		bool IQ_or_DRM_or_SAS = (mode == MODE_IQ || mode == MODE_DRM || mode == MODE_SAS);
+		bool IQ_or_DRM_or_stereo = (mode == MODE_IQ || mode == MODE_DRM || mode == MODE_SAS || mode == MODE_QAM);
 
 		u1_t *bp_real_u1  = snd->out_pkt_real.u1;
 		s2_t *bp_real_s2  = snd->out_pkt_real.s2;
 		u1_t *bp_iq_u1    = snd->out_pkt_iq.u1;
 		s2_t *bp_iq_s2    = snd->out_pkt_iq.s2;
-		u1_t *flags    = (IQ_or_DRM_or_SAS? &snd->out_pkt_iq.h.flags : &snd->out_pkt_real.h.flags);
-		u1_t *seq      = (IQ_or_DRM_or_SAS? snd->out_pkt_iq.h.seq    : snd->out_pkt_real.h.seq);
-		char *smeter   = (IQ_or_DRM_or_SAS? snd->out_pkt_iq.h.smeter : snd->out_pkt_real.h.smeter);
+		u1_t *flags    = (IQ_or_DRM_or_stereo? &snd->out_pkt_iq.h.flags : &snd->out_pkt_real.h.flags);
+		u1_t *seq      = (IQ_or_DRM_or_stereo? snd->out_pkt_iq.h.seq    : snd->out_pkt_real.h.seq);
+		char *smeter   = (IQ_or_DRM_or_stereo? snd->out_pkt_iq.h.smeter : snd->out_pkt_real.h.smeter);
 
-		bool do_de_emp = (de_emp && !IQ_or_DRM_or_SAS);
+		bool do_de_emp = (de_emp && !IQ_or_DRM_or_stereo);
 		
 		#ifdef DRM
             drm_t *drm = &DRM_SHMEM->drm[rx_chan];
@@ -1048,7 +1061,7 @@ void c2s_sound(void *param)
             
             TYPEMONO16 *r_samps;
             
-            if (!IQ_or_DRM_or_SAS) {
+            if (!IQ_or_DRM_or_stereo) {
                 r_samps = &rx->real_samples[rx->real_wr_pos][0];
                 rx->real_seqnum[rx->real_wr_pos] = rx->real_seq;
                 rx->real_seq++;
@@ -1069,6 +1082,9 @@ void c2s_sound(void *param)
                 for (j=0; j<ns_out; j++) {
                     float pwr = a_samps->re*a_samps->re + a_samps->im*a_samps->im;
                     float mag = sqrt(pwr);
+
+                    // high pass filter (DC removal) with IIR filter
+                    // H(z) = (1 - z^-1) / (1 - DC_ALPHA*z^-1)
                     #define DC_ALPHA 0.99f
                     float z0 = mag + (z1 * DC_ALPHA);
                     *d_samps = z0-z1;
@@ -1087,12 +1103,13 @@ void c2s_sound(void *param)
             case MODE_SAM:
             case MODE_SAL:
             case MODE_SAU:
-            case MODE_SAS: {
+            case MODE_SAS:
+            case MODE_QAM: {
                 TYPECPX *a_samps = rx->agc_samples;
                 m_Agc[rx_chan].ProcessData(ns_out, f_samps, a_samps);
 
                 // NB:
-                //      MODE_SAS stereo mode: output samples put back into a_samps
+                //      MODE_SAS/QAM stereo mode: output samples put back into a_samps
                 //      chan_null mode: in addition to r_samps output compute FFT of nulled a_samps
                 wdsp_SAM_demod(rx_chan, mode, chan_null, ns_out, a_samps, r_samps);
                 if (snd->secondary_filter) {
@@ -1164,7 +1181,7 @@ void c2s_sound(void *param)
             }
 
             // noise & autonotch processors that only operate on real samples (i.e. non-IQ)
-            if (!IQ_or_DRM_or_SAS) {
+            if (!IQ_or_DRM_or_stereo) {
                 if (nb_enable[NB_BLANKER]) {
                     switch (nb_algo) {
                         #ifdef NB_STD_POST_FILTER
@@ -1192,12 +1209,12 @@ void c2s_sound(void *param)
                 }
             }
             
+            
             if ((squelch || sq_init) && !isNBFM && mode != MODE_DRM) {
                 if (!rssi_filled || squelch_on_seq == -1) {
                     rssi_q[rssi_p++] = sMeter_dBm;
                     if (rssi_p >= N_RSSI) { rssi_p = 0; rssi_filled = true; }
                 }
-                
                 bool squelch_off = (squelch == 0);
                 bool rtn_is_open = squelch_off? true:false;
                 if (!squelch_off && rssi_filled) {
@@ -1218,27 +1235,52 @@ void c2s_sound(void *param)
                         rtn_is_open = false; 
                     }
                 }
-
                 if (sq_init) sq_init = false;
                 
-                squelched = !rtn_is_open;
+                squelched = (!rtn_is_open);
+            }
+
+            // mute receiver if overload is detected
+            // use the same tail_delay parameter used for the squelch
+            if (mute_overload) {
+            	overload_flag = (sMeter_dBm >= max_thr)? true:false;
+            	if (overload_before && !overload_flag) {
+            		if (snd->seq > overload_timer + tail_delay+1) {
+            			overload_timer = -1;
+            			squelched_overload = false;
+            		}
+            		else { 
+            			squelched_overload = true;
+            		}
+            	}
+                if (overload_flag) {
+                	squelched_overload = true;
+                	overload_before = true;
+                	overload_timer = snd->seq;
+                }
+            }
+            
+            // update UI with admin changes to max_thr
+            if (max_thr != last_max_thr) {
+                send_msg(conn, false, "MSG max_thr=%.0f", roundf(max_thr));
+                last_max_thr = max_thr;
             }
 
             ////////////////////////////////
             // copy to output buffer and send to client
             ////////////////////////////////
             
-            bool send_silence = (masked || squelched);
+            bool send_silence = (masked || squelched || squelched_overload);
     
             // IQ output modes
-            if (mode == MODE_IQ || mode == MODE_SAS
+            if (mode == MODE_IQ || mode == MODE_SAS || mode == MODE_QAM
             #ifdef DRM
                 // DRM monitor mode is effectively the same as MODE_IQ
                 || (mode == MODE_DRM && (drm->monitor || rx_chan >= DRM_MAX_RX))
             #endif
             ) {
                 TYPECPX *cp;
-                if (mode == MODE_SAS) {
+                if (mode == MODE_SAS || mode == MODE_QAM) {
                     cp = rx->agc_samples;
                 } else {
                     cp = f_samps;
@@ -1407,9 +1449,9 @@ void c2s_sound(void *param)
 
         *flags = 0;
         if (dpump.rx_adc_ovfl) *flags |= SND_FLAG_ADC_OVFL;
-        if (IQ_or_DRM_or_SAS) *flags |= SND_FLAG_MODE_IQ;
-        if (compression && !IQ_or_DRM_or_SAS) *flags |= SND_FLAG_COMPRESSED;
-        if (squelched) *flags |= SND_FLAG_SQUELCH_UI;
+        if (IQ_or_DRM_or_stereo) *flags |= SND_FLAG_MODE_IQ;
+        if (compression && !IQ_or_DRM_or_stereo) *flags |= SND_FLAG_COMPRESSED;
+        if (squelched || squelched_overload) *flags |= SND_FLAG_SQUELCH_UI;
         if (little_endian) *flags |= SND_FLAG_LITTLE_ENDIAN;
 
         if (change_LPF) {
@@ -1436,7 +1478,9 @@ void c2s_sound(void *param)
 
         //printf("hdr %d S%d\n", sizeof(out_pkt.h), bc); fflush(stdout);
         int aud_bytes;
-        if (IQ_or_DRM_or_SAS) {
+        int c2s_sound_camp(rx_chan_t *rxc, conn_t *conn, u1_t flags, char *bp, int bytes, int aud_bytes);
+
+        if (IQ_or_DRM_or_stereo) {
             // allow GPS timestamps to be seen by internal extensions
             // but selectively remove from external connections (see admin page security tab)
             if (!allow_gps_tstamp) {
@@ -1447,88 +1491,72 @@ void c2s_sound(void *param)
             const int bytes = sizeof(snd->out_pkt_iq.h) + bc;
             app_to_web(conn, (char*) &snd->out_pkt_iq, bytes);
             aud_bytes = sizeof(snd->out_pkt_iq.h.smeter) + bc;
+            if (rxc->n_camp)
+                aud_bytes += c2s_sound_camp(rxc, conn, *flags, (char*) &snd->out_pkt_iq, bytes, aud_bytes);
         } else {
             const int bytes = sizeof(snd->out_pkt_real.h) + bc;
             app_to_web(conn, (char*) &snd->out_pkt_real, bytes);
             aud_bytes = sizeof(snd->out_pkt_real.h.smeter) + bc;
+            if (rxc->n_camp)
+                aud_bytes += c2s_sound_camp(rxc, conn, *flags, (char*) &snd->out_pkt_real, bytes, aud_bytes);
         }
+
         audio_bytes[rx_chan] += aud_bytes;
         audio_bytes[rx_chans] += aud_bytes;     // [rx_chans] is the sum of all audio channels
 
-
-        #if 0
-            static u4_t last_time[MAX_RX_CHANS];
-            static int nctr;
-            ncnt[rx_chan] += ns_out * (compression? 4:1);
-            int nbuf = ncnt[rx_chan] / snd_rate;
-            if (nbuf >= nctr) {
-                nctr++;
-                u4_t now = timer_ms();
-                printf("SND%d: %d %d %.3fs\n", rx_chan, snd_rate, nbuf, (float) (now - last_time[rx_chan]) / 1e3);
-                
-                #if 0
-                    stat_reg_t stat = stat_get();
-                    if (stat.word & STAT_OVFL) {
-                        //printf("OVERFLOW ==============================================");
-                        spi_set(CmdClrRXOvfl);
-                    }
-                #endif
-
-                //ncnt[rx_chan] = 0;
-                last_time[rx_chan] = now;
-            }
-        #endif
-        
-		#if 0
-			static u4_t last_time[MAX_RX_CHANS];
-			u4_t now = timer_ms();
-			printf("SND%d: %d %.3fs seq-%d\n", rx_chan, aud_bytes,
-				(float) (now - last_time[rx_chan]) / 1e3, snd->seq);
-			last_time[rx_chan] = now;
-		#endif
-
-		#if 0
-            static u4_t last_time[MAX_RX_CHANS];
-            static int nctr;
-            ncnt[rx_chan] += bc * (compression? 4:1);
-            int nbuf = ncnt[rx_chan] / snd_rate;
-            if (nbuf >= nctr) {
-                nctr++;
-                u4_t now = timer_ms();
-                printf("SND%d: %d %d %.3fs\n", rx_chan, snd_rate, nbuf, (float) (now - last_time[rx_chan]) / 1e3);
-                
-                #if 0
-                    stat_reg_t stat = stat_get();
-                    if (stat.word & STAT_OVFL) {
-                        //printf("OVERFLOW ==============================================");
-                        spi_set(CmdClrRXOvfl);
-                    }
-                #endif
-    
-                //ncnt[rx_chan] = 0;
-                last_time[rx_chan] = now;
-            }
-		#endif
-
-		//#define MEAS_SND_TASK
-		#ifdef MEAS_SND_TASK
-            static u4_t last, cps;
-            u4_t now = timer_sec();
-            if (last != now) {
-                for (; last < now; last++) {
-                    if (last < (now-1))
-                        real_printf(">- ");
-                    else
-                        real_printf(">%d ", cps);
-                    fflush(stdout);
-                }
-                cps = 0;
-            } else {
-                cps++;
-            }
-        #endif
         NextTask("s2c end");
-	}
+    }
+}
+
+int c2s_sound_camp(rx_chan_t *rxc, conn_t *conn, u1_t flags, char *bp, int bytes, int aud_bytes)
+{
+    int i, n;
+    int rx_chan = conn->rx_channel;
+	snd_t *snd = &snd_inst[rx_chan];
+    int additional_bytes = 0;
+    
+    for (i = 0, n = 0; i < n_camp; i++) {
+        conn_t *c = rxc->camp_conn[i];
+        if (c == NULL) continue;
+        
+        // detect camping connection has gone away
+        if (!c->valid || c->type != STREAM_MONITOR || c->remote_port != rxc->camp_id[i]) {
+            cprintf(conn, ">>> CAMPER gone rx%d type=%d id=%d/%d slot=%d/%d\n",
+                rx_chan, c->type, c->remote_port, rxc->camp_id[i], i+1, n_camp);
+            rxc->camp_conn[i] = NULL;
+            rxc->n_camp--;
+            continue;
+        }
+
+        if (!c->camp_init) {
+            cprintf(conn, ">>> CAMP init rx%d slot=%d/%d\n", rx_chan, i+1, n_camp);
+            double frate = ext_update_get_sample_rateHz(-1);
+            send_msg(c, SM_SND_DEBUG, "MSG center_freq=%d bandwidth=%d adc_clk_nom=%.0f", (int) ui_srate/2, (int) ui_srate, ADC_CLOCK_NOM);
+            send_msg(c, SM_SND_DEBUG, "MSG audio_camp=0,%d audio_rate=%d sample_rate=%.6f", conn->isLocal, snd_rate, frate);
+            send_msg(c, SM_SND_DEBUG, "MSG audio_adpcm_state=%d,%d", snd->adpcm_snd.index, snd->adpcm_snd.previousValue);
+            cprintf(c, "MSG audio_adpcm_state=%d,%d seq=%d\n", snd->adpcm_snd.index, snd->adpcm_snd.previousValue, snd->seq);
+            c->camp_init = c->camp_passband = true;
+        } else {
+            if (c->camp_passband || (flags & SND_FLAG_LPF)) {
+                send_msg(c, SM_SND_DEBUG, "MSG audio_passband=%.0f,%.0f", snd->locut, snd->hicut);
+                cprintf(c, "MSG audio_passband=%.0f,%.0f\n", snd->locut, snd->hicut);
+                c->camp_passband = false;
+            }
+            
+            // adpcm state has to be sent *before* generation/transmission of new compressed data
+            app_to_web(c, bp, bytes);
+            additional_bytes += aud_bytes;
+        }
+        
+        n++;
+    }
+    
+    if (n != rxc->n_camp) {
+        cprintf(conn, ">>> WARNING n(%d) != n_camp(%d)\n", n, rxc->n_camp);
+        rxc->n_camp = n;
+    }
+    
+    return additional_bytes;
 }
 
 void c2s_sound_shutdown(void *param)

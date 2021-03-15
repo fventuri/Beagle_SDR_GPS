@@ -58,19 +58,18 @@ char *current_authkey;
 int debug_v;
 bool auth_su;
 char auth_su_remote_ip[NET_ADDRSTRLEN];
-bool conn_nolocal;
 
 const char *mode_s[N_MODE] = {
-    "am", "amn", "usb", "lsb", "cw", "cwn", "nbfm", "iq", "drm", "usn", "lsn", "sam", "sau", "sal", "sas"
+    "am", "amn", "usb", "lsb", "cw", "cwn", "nbfm", "iq", "drm", "usn", "lsn", "sam", "sau", "sal", "sas", "qam"
 };
 const char *modu_s[N_MODE] = {
-    "AM", "AMN", "USB", "LSB", "CW", "CWN", "NBFM", "IQ", "DRM", "USN", "LSN", "SAM", "SAU", "SAL", "SAS"
+    "AM", "AMN", "USB", "LSB", "CW", "CWN", "NBFM", "IQ", "DRM", "USN", "LSN", "SAM", "SAU", "SAL", "SAS", "QAM"
 };
 const int mode_hbw[N_MODE] = {
-    9800/2, 5000/2, 2400/2, 2400/2, 400/2, 60/2, 12000/2, 10000/2, 10000/2, 2100/2, 2100/2, 9800/2, 9800/2, 9800/2, 9800/2
+    9800/2, 5000/2, 2400/2, 2400/2, 400/2, 60/2, 12000/2, 10000/2, 10000/2, 2100/2, 2100/2, 9800/2, 9800/2, 9800/2, 9800/2, 9800/2
 };
 const int mode_offset[N_MODE] = {
-    0, 0, 1500, -1500, 0, 0, 0, 0, 0, 1350, -1350, 0, 0, 0, 0
+    0, 0, 1500, -1500, 0, 0, 0, 0, 0, 1350, -1350, 0, 0, 0, 0, 0
 };
 
 #ifndef CFG_GPS_ONLY
@@ -109,6 +108,7 @@ static str_hashes_t rx_common_cmd_hashes[] = {
     { "~~~~~~~~~~", STR_HASH_MISS },
     { "SET keepal", CMD_KEEPALIVE },
     { "SET auth t", CMD_AUTH },
+    { "SET option", CMD_OPTIONS },
     { "SET save_c", CMD_SAVE_CFG },
     { "SET save_a", CMD_SAVE_ADM },
     { "SET DX_UPD", CMD_DX_UPD },
@@ -167,7 +167,10 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
     evLatency(EC_EVENT, EV_RX, 0, "rx_common_cmd", evprintf("%s", cmd));
 	
 	// SECURITY: we accept no incoming commands besides auth and keepalive until auth is successful
-	if (conn->auth == false && strcmp(cmd, "SET keepalive") != 0 && kiwi_str_begins_with(cmd, "SET auth") == false) {
+	if (conn->auth == false &&
+	    strcmp(cmd, "SET keepalive") != 0 &&
+	    kiwi_str_begins_with(cmd, "SET options") == false &&    // options needed before CMD_AUTH
+	    kiwi_str_begins_with(cmd, "SET auth") == false) {
 		clprintf(conn, "### SECURITY: NO AUTH YET: %s %d %s <%s>\n", stream_name, conn->type, conn->remote_ip, cmd);
 		return true;	// fake that we accepted command so it won't be further processed
 	}
@@ -182,7 +185,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
         //    stream_name, rx_common_cmd_hash.cur_hash, cmd);
         return false;     // signal we didn't handle command
     }
-
+    
 	switch (key) {
 	
 	case CMD_KEEPALIVE:
@@ -195,6 +198,17 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                 ext_send_msg(conn->ext_rx_chan, false, "MSG keepalive");
             }
             conn->keepalive_count++;
+            return true;
+        }
+	    break;
+	
+	case CMD_OPTIONS:
+	    u4_t options;
+        n = sscanf(cmd, "SET options=%d", &options);
+        if (n == 1) {
+            //printf("CMD_OPTIONS 0x%x\n", options);
+            #define OPT_NOLOCAL 1
+            if (options & OPT_NOLOCAL) conn->force_isLocal = true;
             return true;
         }
 	    break;
@@ -224,7 +238,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
         
             kiwi_str_decode_inplace(pwd_m);
             kiwi_str_decode_inplace(ipl_m);
-            //printf("PWD %s pwd %d \"%s\" from %s\n", type_m, slen, pwd_m, conn->remote_ip);
+            //printf("PWD %s pwd \"%s\" from %s\n", type_m, pwd_m, conn->remote_ip);
         
             bool allow = false, cant_determine = false, cant_login = false, skip_dup_ip_check = false;
             bool type_kiwi = (type_m != NULL && strcmp(type_m, "kiwi") == 0);
@@ -235,9 +249,10 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
             bool stream_snd = (conn->type == STREAM_SOUND);
             bool stream_snd_or_wf = (stream_snd || stream_wf);
             bool stream_admin_or_mfg = (conn->type == STREAM_ADMIN || conn->type == STREAM_MFG);
+            bool stream_mon = (conn->type == STREAM_MONITOR);
             bool stream_ext = (conn->type == STREAM_EXT);
         
-            bool bad_type = (stream_snd_or_wf || stream_ext || stream_admin_or_mfg)? false : true;
+            bool bad_type = (stream_snd_or_wf || stream_mon || stream_ext || stream_admin_or_mfg)? false : true;
         
             if ((!type_kiwi && !type_prot && !type_admin) || bad_type) {
                 clprintf(conn, "PWD BAD REQ type_m=\"%s\" conn_type=%d from %s\n", type_m, conn->type, conn->remote_ip);
@@ -271,7 +286,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                 log_auth_attempt = true;
                 pwd_debug = true;
             } else {
-                log_auth_attempt = (stream_admin_or_mfg || (stream_ext && type_admin));
+                log_auth_attempt = (stream_admin_or_mfg || stream_mon || (stream_ext && type_admin));
                 pwd_debug = false;
             }
         
@@ -308,7 +323,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                 // so it will never be considered a local connection.
                 isLocal = isLocal_if_ip(conn, ip_remote(mc), (log_auth_attempt || pwd_debug)? "PWD" : NULL);
 
-                if (conn_nolocal) {
+                if (conn->force_isLocal) {
                     isLocal = IS_NOT_LOCAL;
                     pwd_debug = true;
                 }
@@ -370,8 +385,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                 //cprintf(conn, "client_public_ip %s\n", client_public_ip);
             }
 
-            int chan_no_pwd = cfg_int("chan_no_pwd", NULL, CFG_REQUIRED);
-            if (chan_no_pwd >= rx_chans) chan_no_pwd = rx_chans - 1;
+		    int chan_no_pwd = rx_chan_no_pwd();
             int chan_need_pwd = rx_chans - chan_no_pwd;
 
             if (type_kiwi || type_prot) {
@@ -401,7 +415,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                     allow = true;
                     skip_dup_ip_check = true;
                 } else
-            
+                
                 if (!type_prot) {       // consider only if protected mode not requested
             
                     int rx_free = rx_chan_free_count(RX_COUNT_ALL);
@@ -412,11 +426,14 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                     int already_privileged_conns = rx_count_server_conns(LOCAL_OR_PWD_PROTECTED_USERS, conn);
                     chan_need_pwd -= already_privileged_conns;
                     if (chan_need_pwd < 0) chan_need_pwd = 0;
+                    
+                    // NB: ">=" not ">" because channel already allocated (freed if this check fails)
                     pdbug_cprintf(conn, "PWD %s %s rx_free=%d >= chan_need_pwd=%d %s already_privileged_conns=%d\n", 
                         type_m, uri, rx_free, chan_need_pwd,
                         (rx_free >= chan_need_pwd)? "TRUE":"FALSE", already_privileged_conns);
-                
-                    if (rx_free >= chan_need_pwd) {
+
+                    // always allow STREAM_MONITOR for the case when channels could become available
+                    if (rx_free >= chan_need_pwd || stream_mon) {
                         allow = true;
                         //nwf_cprintf(conn, "PWD rx_free=%d >= chan_need_pwd=%d %s\n", rx_free, chan_need_pwd, allow? "TRUE":"FALSE");
                     }
@@ -547,12 +564,13 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
             }
 
             send_msg(conn, false, "MSG rx_chans=%d", rx_chans);
-            send_msg(conn, false, "MSG chan_no_pwd=%d", chan_no_pwd);
-            if (badp == 0 && (conn->type == STREAM_SOUND || conn->type == STREAM_ADMIN)) {
+            send_msg(conn, false, "MSG chan_no_pwd=%d", chan_no_pwd);   // potentially corrected from cfg.chan_no_pwd
+            send_msg(conn, false, "MSG chan_no_pwd_true=%d", rx_chan_no_pwd(PWD_CHECK_YES));
+            if (badp == 0 && (stream_snd || conn->type == STREAM_ADMIN)) {
                 send_msg(conn, false, "MSG is_local=%d,%d", conn->rx_channel, is_local? 1:0);
-                conn_nolocal = false;
-                //pdbug_cprintf(conn, "PWD %s %s resetting conn_nolocal\n", type_m, uri);
+                //pdbug_cprintf(conn, "PWD %s %s\n", type_m, uri);
             }
+            send_msg(conn, false, "MSG max_camp=%d", N_CAMP);
             send_msg(conn, false, "MSG badp=%d", badp);
 
             free(pwd_m); free(ipl_m);
@@ -595,7 +613,7 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
                     }
 
                     // send cfg once to javascript
-                    if (stream_snd || stream_admin_or_mfg)
+                    if (stream_snd || stream_mon || stream_admin_or_mfg)
                         rx_server_send_config(conn);
                 
                     // setup stream task first time it's authenticated
@@ -1387,7 +1405,6 @@ bool rx_common_cmd(const char *stream_name, conn_t *conn, char *cmd)
 
     case CMD_IS_ADMIN:
         if (strcmp(cmd, "SET is_admin") == 0) {
-            assert(conn->auth == true);
             send_msg(conn, false, "MSG is_admin=%d", conn->auth_admin);
             return true;
         }

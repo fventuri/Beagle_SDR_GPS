@@ -48,6 +48,7 @@ Boston, MA  02110-1301, USA.
 #include <signal.h>
 
 conn_t conns[N_CONNS];
+bool force_camp;
 
 rx_chan_t rx_channels[MAX_RX_CHANS];
 
@@ -60,6 +61,7 @@ rx_stream_t rx_streams[] = {
 	{ STREAM_WATERFALL,	"W/F",		&c2s_waterfall,	&c2s_waterfall_setup,	&c2s_waterfall_shutdown, WF_PRIORITY },
 	{ STREAM_MFG,		"mfg",		&c2s_mfg,		&c2s_mfg_setup,			NULL,                    TASK_MED_PRIORITY },
 	{ STREAM_EXT,		"EXT",		&extint_c2s,	&extint_setup_c2s,		NULL,                    TASK_MED_PRIORITY },
+	{ STREAM_MONITOR,   "MON",		&c2s_mon,	    &c2s_mon_setup,         NULL,                    TASK_MED_PRIORITY },
 
 	// AJAX requests
 	{ AJAX_DISCOVERY,	"DIS" },
@@ -74,7 +76,6 @@ static void conn_init(conn_t *c)
 {
 	memset(c, 0, sizeof(conn_t));
 	c->magic = CN_MAGIC;
-	c->self = c;
 	c->self_idx = c - conns;
 	c->rx_channel = -1;
 	c->ext_rx_chan = -1;
@@ -187,9 +188,8 @@ static void dump_conn()
 	int i;
 	conn_t *cd;
 	for (cd = conns, i=0; cd < &conns[N_CONNS]; cd++, i++) {
-		lprintf("dump_conn: CONN-%02d %p valid=%d type=%d [%s] auth=%d KA=%d/60 KC=%d mc=%p rx=%d %s magic=0x%x ip=%s:%d other=%s%d %s\n",
-			i, cd, cd->valid, cd->type, rx_streams[cd->type].uri, cd->auth, cd->keep_alive, cd->keepalive_count, cd->mc, cd->rx_channel,
-			cd->magic, cd->remote_ip, cd->remote_port, cd->other? "CONN-":"", cd->other? cd->other-conns:0, cd->stop_data? "STOP":"");
+	    if (!cd->valid) continue;
+        show_conn("dump_conn: ", cd);
 	}
 	rx_chan_t *rc;
 	for (rc = rx_channels, i=0; rc < &rx_channels[rx_chans]; rc++, i++) {
@@ -340,6 +340,21 @@ void rx_server_remove(conn_t *c)
 	TaskRemove(task);
 }
 
+int rx_chan_no_pwd(pwd_check_e pwd_check)
+{
+    int chan_no_pwd = cfg_int("chan_no_pwd", NULL, CFG_REQUIRED);
+    // adjust if number of rx channels changed due to mode change but chan_no_pwd wasn't adjusted
+    if (chan_no_pwd >= rx_chans) chan_no_pwd = rx_chans - 1;
+
+    if (pwd_check == PWD_CHECK_YES) {
+        const char *pwd_s = admcfg_string("user_password", NULL, CFG_REQUIRED);
+		if (pwd_s == NULL || *pwd_s == '\0') chan_no_pwd = 0;   // ignore setting if no password set
+		cfg_string_free(pwd_s);
+    }
+
+    return chan_no_pwd;
+}
+
 int rx_count_server_conns(conn_count_e type, conn_t *our_conn)
 {
 	int users=0, any=0;
@@ -362,7 +377,7 @@ int rx_count_server_conns(conn_count_e type, conn_t *our_conn)
 	        if (our_conn && c->other && c->other == our_conn) continue;
 
 	        if (sound && (c->isLocal || c->auth_prot)) {
-                show_conn("LOCAL_OR_PWD_PROTECTED_USERS ", c);
+                //show_conn("LOCAL_OR_PWD_PROTECTED_USERS ", c);
 	            users++;
 	        }
 	    } else {
@@ -482,6 +497,7 @@ conn_t *rx_server_websocket(websocket_mode_e mode, struct mg_connection *mc)
 	    isKiwi_UI = true;
 	    isNo_WF = true;
 	} else {
+	    // kiwiclient / kiwirecorder
         if (sscanf(uri_ts, "%lld/%256ms", &tstamp, &uri_m) != 2) {
             printf("bad URI_TS format\n");
             free(uri_m);
@@ -587,8 +603,9 @@ conn_t *rx_server_websocket(websocket_mode_e mode, struct mg_connection *mc)
 	int cn, cnfree;
 	conn_t *cfree = NULL, *cother = NULL;
 	bool snd_or_wf = (st->type == STREAM_SOUND || st->type == STREAM_WATERFALL);
+	int mon_total = 0;
 	
-	for (c=conns, cn=0; c<&conns[N_CONNS]; c++, cn++) {
+	for (c = conns, cn=0; c < &conns[N_CONNS]; c++, cn++) {
 		assert(c->magic == CN_MAGIC);
 
 		// cull conns stuck in STOP_DATA state (Novosibirsk problem)
@@ -611,27 +628,31 @@ conn_t *rx_server_websocket(websocket_mode_e mode, struct mg_connection *mc)
 				//printf("CONN-%d DUPLICATE!\n", cn);
 				return NULL;
 			}
-			if (st->type == STREAM_SOUND && c->type == STREAM_WATERFALL) {
+			if (st->type == STREAM_SOUND && (c->type == STREAM_WATERFALL || c->type == STREAM_MONITOR)) {
 				if (!multiple) {
 					cother = c;
 					multiple = true;
-					//printf("CONN-%d OTHER WF @ CONN-%ld\n", cn, c-conns);
+					//printf("NEW SND, OTHER is %s @ CONN-%d\n", rx_streams[c->type].uri, cn);
+					//dump_conn();
 				} else {
-					printf("CONN-%d MULTIPLE OTHER!\n", cn);
+					printf("NEW SND, MULTIPLE OTHERS!\n");
 					return NULL;
 				}
 			}
-			if (st->type == STREAM_WATERFALL && c->type == STREAM_SOUND) {
+			if (st->type == STREAM_WATERFALL && (c->type == STREAM_SOUND || c->type == STREAM_MONITOR)) {
 				if (!multiple) {
 					cother = c;
 					multiple = true;
-					//printf("CONN-%d OTHER SND @ CONN-%ld\n", cn, c-conns);
+					//printf("NEW WF, OTHER is %s @ CONN-%d\n", rx_streams[c->type].uri, cn);
+					//dump_conn();
 				} else {
-					printf("CONN-%d MULTIPLE OTHER!\n", cn);
+					printf("NEW WF, MULTIPLE OTHERS!\n");
 					return NULL;
 				}
 			}
 		}
+		
+		if (c->type == STREAM_MONITOR) mon_total++;
 	}
 	
 	if (c == &conns[N_CONNS]) {
@@ -678,31 +699,51 @@ conn_t *rx_server_websocket(websocket_mode_e mode, struct mg_connection *mc)
                 }
             }
 
-			if (rx == -1) {
-				//printf("(too many rx channels open for %s)\n", st->uri);
-                send_msg_mc(mc, SM_NO_DEBUG, "MSG too_busy=%d", rx_chans);
-                mc->connection_param = NULL;
-                conn_init(c);
-                return NULL;
-			}
-			
-			if (st->type == STREAM_WATERFALL && rx >= wf_chans) {
-				
-				// Kiwi UI handles no-WF condition differently -- don't send error
-				if (!isKiwi_UI) {
-				    //printf("(case 1: too many wf channels open for %s)\n", st->uri);
-				    send_msg_mc(mc, SM_NO_DEBUG, "MSG too_busy=%d", rx_chans);
+            if (rx == -1 || force_camp) {
+                if (force_camp) rx = -1;
+                //cprintf(c, "rx=%d force_camp=%d\n", rx, force_camp);
+                force_camp = false;
+                if (isKiwi_UI && (mon_total < monitors_max)) {
+                    // turn first connection when no channels (SND or WF) into MONITOR
+                    c->type = STREAM_MONITOR;
+                    st = &rx_streams[STREAM_MONITOR];
+                    snd_or_wf = false;
+                } else {
+                    //printf("(too many rx channels open for %s)\n", st->uri);
+                    send_msg_mc(mc, SM_NO_DEBUG, "MSG too_busy=%d", rx_chans);
                     mc->connection_param = NULL;
                     conn_init(c);
                     return NULL;
                 }
-			}
+            } else {
+                if (st->type == STREAM_WATERFALL && rx >= wf_chans) {
+            
+                    // Kiwi UI handles no-WF condition differently -- don't send error
+                    if (!isKiwi_UI) {
+                        //printf("(case 1: too many wf channels open for %s)\n", st->uri);
+                        send_msg_mc(mc, SM_NO_DEBUG, "MSG too_busy=%d", rx_chans);
+                        mc->connection_param = NULL;
+                        conn_init(c);
+                        return NULL;
+                    }
+                }
+            }
 			
-			//printf("CONN-%d no other, new alloc rx%d\n", cn, rx);
-			rx_channels[rx].busy = true;
+			if (rx != -1) {
+			    //printf("CONN-%d no other, new alloc rx%d\n", cn, rx);
+			    rx_channels[rx].busy = true;
+			}
 		} else {
             //printf("### %s cother=%p isKiwi_UI=%d isNo_WF=%d isWF_conn=%d\n",
             //    st->uri, cother, isKiwi_UI, isNo_WF, isWF_conn);
+
+            if (cother->type == STREAM_MONITOR) {   // sink second connection
+                //printf("STREAM_MONITOR sink conn-%ld other conn-%d\n", c-conns, cother->self_idx);
+                mc->connection_param = NULL;
+                conn_init(c);
+                return NULL;
+            }
+
 			if (st->type == STREAM_WATERFALL && cother->rx_channel >= wf_chans) {
 
 				// Kiwi UI handles no-WF condition differently -- don't send error

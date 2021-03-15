@@ -170,6 +170,11 @@ function dq(s)
 	return '\"'+ s +'\"';
 }
 
+function plural(num, word)
+{
+   if (num == 1) return word; else return word +'s';
+}
+
 function arrayBufferToString(buf) {
 	//http://stackoverflow.com/questions/6965107/converting-between-strings-and-arraybuffers
 	return String.fromCharCode.apply(null, new Uint8Array(buf));
@@ -182,6 +187,16 @@ function arrayBufferToStringLen(buf, len)
 	len = Math.min(len, u8buf.length);
 	for (i=0; i<len; i++) output += String.fromCharCode(u8buf[i]);
 	return output;
+}
+
+function kiwi_shallow_copy(obj)
+{
+   return Object.assign({}, obj);
+}
+
+function kiwi_deep_copy(obj)
+{
+   return JSON.parse(JSON.stringify(obj));
 }
 
 // external API compatibility
@@ -231,7 +246,7 @@ Number.prototype.leadingZeros = function(size)
 {
 	var s = String(this);
 	if (!isNumber(size)) size = 2;
-	while (s.length < size) s = "0"+s;
+	while (s.length < size) s = '0'+ s;
 	return s;
 }
 
@@ -245,6 +260,14 @@ String.prototype.leadingZeros = function(size)
 }
 
 // size is total number of characters, padded to the left with spaces
+Number.prototype.fieldWidth = function(size)
+{
+	var s = String(this);
+	if (!isNumber(size)) return s;
+	while (s.length < size) s = ' '+ s;
+	return s;
+}
+
 String.prototype.fieldWidth = function(size)
 {
 	var s = String(this);
@@ -418,7 +441,16 @@ function console_log_dbgUs()
 // console log via a timeout for routines that are realtime critical (e.g. audio on_process() routines)
 function kiwi_log(s)
 {
-   setTimeout(function(s) { console.log(s); }, 1, s);
+   setTimeout(function(s) {
+      console.log(s);
+   }, 1, s);
+}
+
+function kiwi_trace_log(s)
+{
+   setTimeout(function(s) {
+      kiwi_trace(s);
+   }, 1, s);
 }
 
 function kiwi_rateLimit(cb, time)
@@ -461,6 +493,13 @@ function kiwi_hh_mm(hh_mm)
    return null;
 }
 //console.log('# '+ kiwi_hh_mm(-11) +' '+ + kiwi_hh_mm('-10') +' '+ kiwi_hh_mm('10:55') +' '+ kiwi_hh_mm('-10:55'));
+
+// stackoverflow.com/questions/8619879/javascript-calculate-the-day-of-the-year-1-366
+function kiwi_UTCdoyToDate(doy, year, hour, min, sec)
+{
+   return new Date(Date.UTC(year, 0, doy, hour, min, sec));    // yes, doy = 1..366 really works!
+}
+
 
 
 ////////////////////////////////
@@ -524,6 +563,27 @@ function kiwi_url_param(pnames, default_val, not_found_val)
    });
    
    return rv;
+}
+
+function kiwi_add_search_param(location, param)
+{
+   var p;
+   var qs = location.search;
+   console.log('qs=<'+ qs +'>');
+   if (qs == '') p = '/?';
+   else if (qs.includes('?')) p = '&';
+   else p = '/?';
+   return p + param;
+}
+
+function kiwi_remove_search_param(url, p)
+{
+   url = url
+      .replace('?'+ p +'&', '?')
+      .replace('&'+ p +'&', '&')
+      .replace('?'+ p +'', '')
+      .replace('&'+ p +'', '');
+   return url;
 }
 
 var kiwiint_dummy_elem = {};
@@ -1198,9 +1258,9 @@ function open_websocket(stream, open_cb, open_cb_param, msg_cb, recv_cb, error_c
 	   // We've seen a case where, if uncaught, an "undefined" error in this callback code
 	   // is never reported in the console. The callback just silently exits!
 	   // So add a try/catch to all web socket callbacks as a safety net.
-	   try {
+	   //try {
 		   on_ws_recv(evt, ws);
-      } catch(ex) { console.log(ex); }
+      //} catch(ex) { console.log(ex); }
 	};
 
 	ws.onclose = function(evt) {
@@ -1247,14 +1307,10 @@ function on_ws_recv(evt, ws)
 	//if (ws.stream == 'EXT') console.log('on_ws_recv: <'+ s +'>');
 
 	var firstChars = arrayBufferToStringLen(data,3);
-	//divlog("on_ws_recv: "+firstChars);
 
-	if (firstChars == "CLI") {
-		//var stringData = arrayBufferToString(data);
-		//if (stringData.substring(0,16) == "CLIENT DE SERVER")
-			//divlog("Acknowledged WebSocket connection: "+stringData);
-		return;
-	} else
+   //console.log(firstChars +' '+ (new DataView(data, 0)).byteLength);
+
+	if (firstChars == "CLI") return;
 	
 	var claimed = false;
 	if (firstChars == "MSG") {

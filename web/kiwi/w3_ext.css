@@ -311,6 +311,14 @@ input[type=range]::-moz-range-thumb {
     cursor: crosshair;
 }
 
+/* overrides w3-css with "cursor: not-allowed !important" that
+   subsequently overrides openwebrx.css ".class-button: cursor: pointer"*/
+.w3-disabled
+{
+    cursor: not-allowed !important;
+    opacity: 0.3;
+}
+
 .w3-link-color
 {
     color: hsl(212, 100%, 80%);
@@ -356,6 +364,11 @@ input[type=range]::-moz-range-thumb {
 .w3-margin-8
 {
     margin: 8px !important
+}
+
+.w3-margin-16
+{
+    margin: 16px !important
 }
 
 .w3-margin-32
@@ -528,6 +541,11 @@ input[type=range]::-moz-range-thumb {
 .w3-margin-TB-8
 {
     margin: 8px 0
+}
+
+.w3-margin-TB-16
+{
+    margin: 16px 0
 }
 
 

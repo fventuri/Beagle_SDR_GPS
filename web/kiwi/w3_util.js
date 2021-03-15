@@ -421,9 +421,13 @@ function w3_clamp(v, min, max, clamp_val)
 // HTML
 ////////////////////////////////
 
-function w3_add_id(path)
+function w3_add_id(path, suffix)
 {
-   return path? (path.startsWith('id-')? path : ('id-'+ path)) : '';
+   path = path || '';
+   if (path == '') return '';
+   path = path.startsWith('id-')? path : ('id-'+ path);
+   suffix = suffix || '';
+   return path + suffix;
 }
 
 // return document element reference either by id or name
@@ -483,7 +487,9 @@ function w3_el(el_id)
 	return (el_id);
 }
 
-function w3_els(el_id)
+// for when there are multiple elements with the same "id-*"
+// returns element list and optionally calls iterates calling func()
+function w3_els(el_id, func)
 {
 	if (isString(el_id)) {
 	   if (el_id == '') return null;
@@ -499,6 +505,9 @@ function w3_els(el_id)
 				}
 			}
 		}
+      if (els && func) for (var i = 0; i < els.length; i++) {
+         func(els[i], i);
+      }
 		return els;
 	}
 	return (el_id);
@@ -832,13 +841,23 @@ function w3_show(el_id, display)
 	return el;
 }
 
-function w3_attribute(el_id, name, val)
+function w3_create_attribute(el_id, name, val)
 {
 	var el = w3_el(el_id);
 	if (el == null) return;
 	var attr = document.createAttribute(name);
 	attr.value = val;
 	el.setAttributeNode(attr);
+}
+
+function w3_attribute(el_id, name, val, cond)
+{
+	var el = w3_el(el_id);
+	if (el == null) return null;
+	if (isUndefined(cond) || cond == true)
+	   el.setAttribute(name, val)    // repeated sets only update (i.e. don't create duplicate attrs)
+	else
+	   el.removeAttribute(name);
 }
 
 function w3_show_block(el_id)
@@ -924,6 +943,13 @@ function w3_isHighlighted(el_id)
 {
 	var el = w3_el(el_id);
 	return w3_contains(el, el.w3int_highlight_color || w3_highlight_color);
+}
+
+function w3_schedule_highlight(el_id)
+{
+   var el = w3_el(el_id);
+   w3_highlight(el);
+   setTimeout(function() { w3_unhighlight(el); }, w3_highlight_time);
 }
 
 function w3_set_highlight_color(el_id, color)
@@ -1174,6 +1200,22 @@ function w3_copy_to_clipboard(val)
 
 
 ////////////////////////////////
+// hr
+////////////////////////////////
+
+function w3_hr(psa)
+{
+   var p = w3_psa(psa);
+	var s = '<hr '+ p +'>';
+	var narg = arguments.length;
+		for (var i=1; i < narg; i++) {
+			s += arguments[i];
+		}
+	//console.log(s);
+	return s;
+}
+
+////////////////////////////////
 // nav
 ////////////////////////////////
 
@@ -1305,24 +1347,31 @@ function w3_navdef(psa, text, id, cb)
 function w3_label(psa, text, path, extension)
 {
    if (arguments.length >= 4) console.log('### w3_label ext='+ extension);
-   if ((!psa || psa == '') && (!text || text == '') && (!extension || extension == '')) return '';
+   psa = psa || '';
+   text = text || '';
+   extension = extension || '';
+   if (psa == '' && text == '' && extension == '') return '';
    
    // most likely already an embedded w3_label()
-   if (text && text.startsWith('<label ')) return text;
+   if (text.startsWith('<label ')) return text;
    
-   path = path? ('id-'+ path +'-label') : '';   // so w3_set_label() can find label
+   var id = w3_add_id(path, '-label');    // so w3_set_label() can find label
 	//var inline = psa.includes('w3-label-inline');
-	var p = w3_psa(psa, path);
-	text = text? text : '';
-	var s = '<label '+ p +'>'+ text + (extension? extension : '') +'</label>';
-	//var s = '<label '+ p +'>'+ text + (extension? extension : '') + (inline? '':'<br>') +'</label>';
-	//console.log('LABEL: psa='+ psa +' text=<'+ text +'> text?='+ (text?1:0) +' s=<'+ s +'>');
+	var p = w3_psa(psa, id);
+	var s = '<label '+ p +'>'+ text + extension +'</label>';
+	//var s = '<label '+ p +'>'+ text + extension + (inline? '':'<br>') +'</label>';
+	//console.log('LABEL: psa='+ psa +' text=<'+ text +'> s=<'+ s +'>');
 	return s;
+}
+
+function w3_get_label(label, path)
+{
+	return w3_get_innerHTML(w3_add_id(path, '-label'));
 }
 
 function w3_set_label(label, path)
 {
-	w3_el(path +'-label').innerHTML = label;
+	w3_innerHTML(w3_add_id(path, '-label'), label);
 }
 
 
@@ -1349,17 +1398,24 @@ function w3int_link_click(ev, cb, cb_param)
 function w3_link(psa, url, inner, title, cb, cb_param)
 {
    var qual_url = url;
-   if (!url.startsWith('http://') && !url.startsWith('https://'))
-      qual_url = 'http://'+ url;
+   var target;
+   if (url.startsWith('javascript:')) {
+      target = '';
+   } else {
+      if (!url.startsWith('http://') && !url.startsWith('https://'))
+         qual_url = 'http://'+ url;
+      target = ' target="_blank"';
+   }
    inner = inner || '';
-   title = (title && title != '')? (' title='+ dq(title)) : '';
+   title = title || '';
+   if (title != '') title = ' title='+ dq(title);
 
    // by default use pointer cursor if there is a callback
 	var pointer = (cb && cb != '')? 'w3-pointer':'';
 	cb_param = cb_param || 0;
 	var onclick = cb? (' onclick="w3int_link_click(event, '+ sq(cb) +', '+ sq(cb_param) +')"') : '';
 
-	var p = w3_psa(psa, pointer, '', 'href='+ dq(qual_url) +' target="_blank"'+ title + onclick);
+	var p = w3_psa(psa, pointer, '', 'href='+ dq(qual_url) + target + title + onclick);
 	var s = '<a '+ p +'>'+ inner +'</a>';
 	//console.log(s);
 	return s;
@@ -1556,7 +1612,11 @@ function w3_icon(psa, fa_icon, size, color, cb, cb_param)
 	if (isString(size)) font_size = size;
 	font_size = font_size? (' font-size:'+ font_size +';') : '';
 
-	color = (color && color != '')? (' color:'+ color) : '';
+   color = color || '';
+   var c = color.split('|');
+   color = '';
+   if (c[0] != '') color = ' color:'+ c[0] +';';
+   if (c.length >= 2 && c[1] != '') color += ' background-color:'+ c[1] +';';
 	var onclick = cb? ('onclick="w3int_button_click(event, '+ sq(path) +', '+ sq(cb) +', '+ sq(cb_param) +')"') : '';
 	if (cb && psa.includes('w3-momentary')) {
 	   onclick += ' onmousedown="w3int_button_click(event, '+ sq(path) +', '+ sq(cb) +', 0)"';
@@ -1663,10 +1723,7 @@ function w3_input_change(path, cb, cb_param)
       //console.log('w3_input_change path='+ path);
       w3_check_restart_reboot(el);
       
-      w3_highlight(el);
-      setTimeout(function() {
-         w3_unhighlight(el);
-      }, w3_highlight_time);
+      w3_schedule_highlight(el);
 
       // cb is a string because can't pass an object to onclick
       if (cb) {
@@ -1693,10 +1750,12 @@ function w3_input(psa, label, path, val, cb, placeholder)
 	var id = w3_add_id(path);
 	cb = cb || '';
 	var phold = placeholder? (' placeholder="'+ placeholder +'"') : '';
-	var onchange = path? (' onchange="w3_input_change('+ sq(path) +', '+ sq(cb) +')" onkeydown="w3int_input_key(event, '+ sq(path) +', '+ sq(cb) +')"') : '';
+	var custom = psa.includes('w3-custom-events');
+	var onchange = (path && !custom)? (' onchange="w3_input_change('+ sq(path) +', '+ sq(cb) +')" onkeydown="w3int_input_key(event, '+ sq(path) +', '+ sq(cb) +')"') : '';
 	var val = ' value='+ dq(w3_esc_dq(val) || '');
 	var inline = psa.includes('w3-label-inline');
 	var bold = !psa.includes('w3-label-not-bold');
+	label = label || '';
 	var spacing = (label != '' && inline)? ' w3int-margin-input' : '';
 
 	// type="password" is no good because it forces the submit to be https which we don't support
@@ -1705,7 +1764,8 @@ function w3_input(psa, label, path, val, cb, placeholder)
    var psa3 = w3_psa3(psa);
    var psa_outer = w3_psa(psa3.left, inline? 'w3-show-inline-new':'');
    var psa_label = w3_psa_mix(psa3.middle, (label != '' && bold)? 'w3-bold':'');
-	var psa_inner = w3_psa(psa3.right, 'w3-input w3-border w3-hover-shadow '+ id + spacing, '', type + phold);
+   var id_s = (id != '')? (id +' ') : '';
+	var psa_inner = w3_psa(psa3.right, id_s +'w3-input w3-border w3-hover-shadow'+ spacing, '', type + phold);
 
 	var s =
 	   '<div '+ psa_outer +'>' +
@@ -1713,7 +1773,7 @@ function w3_input(psa, label, path, val, cb, placeholder)
 		   // NB: include id in an id= for benefit of keyboard shortcut field detection
          '<input id='+ dq(id) +' '+ psa_inner + val + onchange +'>' +
       '</div>';
-	//if (path == 'Title') console.log(s);
+	//if (path == 'freq-input') console.log(s);
 	//w3int_input_set_id(id);
 	return s;
 }
@@ -1808,10 +1868,7 @@ function w3int_checkbox_change(path, cb, cb_param)
 	if (cb) {
 	   //console.log('w3int_checkbox_change el='+ el +' checked='+ el.checked);
 		//el.select();
-		w3_highlight(el);
-		setTimeout(function() {
-			w3_unhighlight(el);
-		}, w3_highlight_time);
+		w3_schedule_highlight(el);
 		w3_call(cb, path, el.checked, /* first */ false, cb_param);
 	}
 
@@ -2078,11 +2135,9 @@ function w3_select_enum(path, func)
 function w3_select_value(path, idx, opt)
 {
    if (w3_opt(opt, 'all')) {
-      var els = w3_els(path);
-      if (!els) return;
-      for (var i = 0; i < els.length; i++) {
-         els[i].value = idx;
-      }
+      w3_els(path, function(el) {
+         el.value = idx;
+      });
    } else {
       var el = w3_el(path);
       if (!el) return;
