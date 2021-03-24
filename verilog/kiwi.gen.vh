@@ -9,7 +9,7 @@
 `define USE_GPS    // DEFh 0x1
 `define ARTIX_7A35    // DEFh 0x1
 //`define ZYNQ_7007    // DEFh 0x0
-	parameter FPGA_VER = 4'd1;    // DEFp 0x2
+	parameter FPGA_VER = 4'd1;    // DEFp 0x1
 `define DEF_FPGA_VER
 	parameter FW_ID = 20480;    // DEFp 0x5000
 `define DEF_FW_ID
@@ -17,7 +17,8 @@
 `define DEF_ADC_BITS
 	parameter DEFAULT_NSYNC = 2;    // DEFp 0x2
 `define DEF_DEFAULT_NSYNC
-`define USE_GEN    // DEFh 0x1
+	parameter USE_GEN = 1;    // DEFp 0x1
+`define DEF_USE_GEN
 `define USE_LOGGER    // DEFh 0x1
 `define USE_CPU_CTR    // DEFh 0x1
 `define USE_DEBUG    // DEFh 0x1
@@ -54,14 +55,14 @@
 `define DEF_SPIBUF_B
 	parameter SPIBUF_BMAX = 4094;    // DEFp 0xffe
 `define DEF_SPIBUF_BMAX
-	parameter RX1_20K_DECIM = 1250;    // DEFp 0x4e2
-`define DEF_RX1_20K_DECIM
-	parameter RX2_20K_DECIM = 5;    // DEFp 0x5
-`define DEF_RX2_20K_DECIM
-	parameter RX1_12K_DECIM = 1488;    // DEFp 0x5d0
-`define DEF_RX1_12K_DECIM
-	parameter RX2_12K_DECIM = 7;    // DEFp 0x7
-`define DEF_RX2_12K_DECIM
+	parameter RX1_WIDE_DECIM = 1250;    // DEFp 0x4e2
+`define DEF_RX1_WIDE_DECIM
+	parameter RX2_WIDE_DECIM = 5;    // DEFp 0x5
+`define DEF_RX2_WIDE_DECIM
+	parameter RX1_STD_DECIM = 1488;    // DEFp 0x5d0
+`define DEF_RX1_STD_DECIM
+	parameter RX2_STD_DECIM = 7;    // DEFp 0x7
+`define DEF_RX2_STD_DECIM
 	parameter MAX_SND_RATE = 20250;    // DEFp 0x4f1a
 `define DEF_MAX_SND_RATE
 	parameter SND_RATE_3CH = 20250;    // DEFp 0x4f1a
