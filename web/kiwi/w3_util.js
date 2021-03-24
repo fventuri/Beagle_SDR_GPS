@@ -513,32 +513,6 @@ function w3_els(el_id, func)
 	return (el_id);
 }
 
-// w3_el(), but silently failing if element doesn't exist
-function w3_el_softfail(id)
-{
-	var el = w3_el(id);
-	var debug;
-	try {
-		debug = el.innerHTML;
-	} catch(ex) {
-		console.log('w3_el_softfail("'+ id +'") SOFTFAIL');
-		/*
-		if (dbgUs && dbgUsFirst) {
-			kiwi_trace();
-			dbgUsFirst = false;
-		}
-		*/
-	}
-	if (el == null) {
-	   el = document.createElement('div');		// allow failures to proceed, e.g. assignments to innerHTML
-	   el.id = id;
-	   el.classList.add('NB-SOFTFAIL');
-	   el.style.display = 'none';
-	   document.body.appendChild(el);
-	}
-	return el;
-}
-
 // return id of element (i.e. 'id-*') if found
 function w3_id(el_id)
 {
@@ -560,7 +534,9 @@ function w3_id(el_id)
 // assign innerHTML, silently failing if element doesn't exist
 function w3_innerHTML(id)
 {
-	var el = w3_el_softfail(id);
+	//var el = w3_el_softfail(id);
+	var el = w3_el(id);
+	if (!el) return null;
 	var s = '';
 	var narg = arguments.length;
    for (var i=1; i < narg; i++) {
@@ -570,7 +546,7 @@ function w3_innerHTML(id)
 	return el;
 }
 
-function w3_set_innerHTML(id)
+function w3_append_innerHTML(id)
 {
 	var el = w3_el(id);
 	if (!el) return null;
@@ -579,7 +555,7 @@ function w3_set_innerHTML(id)
    for (var i=1; i < narg; i++) {
       s += arguments[i];
    }
-	el.innerHTML = s;
+	el.innerHTML += s;
 	return el;
 }
 
@@ -608,7 +584,7 @@ function w3_iterate_classList(el_id, func)
 	return el;
 }
 
-function w3_appendElement(el_parent, el_type, html)
+function w3_create_appendElement(el_parent, el_type, html)
 {
    var el_child = document.createElement(el_type);
    w3_innerHTML(el_child, html);

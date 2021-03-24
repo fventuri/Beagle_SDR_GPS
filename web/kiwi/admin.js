@@ -37,6 +37,7 @@ function status_html()
          w3_div('id-problems w3-container') +
          w3_div('id-msg-config w3-container') +
          w3_div('id-msg-gps w3-container') +
+         w3_div('id-msg-snr w3-container') +
          '<hr>' +
          w3_div('id-msg-stats-cpu w3-container') +
          w3_div('id-msg-stats-xfer w3-container') +
@@ -318,7 +319,16 @@ function control_html()
                'performance problems from too many audio campers.'
             )
          ),
-         '',
+			w3_divs('/w3-center w3-tspace-8',
+				w3_div('', '<b>Enable automatic SNR measurement?</b>'),
+            w3_switch('', 'Yes', 'No', 'cfg.SNR_meas', cfg.SNR_meas, 'admin_radio_YN_cb'),
+				w3_text('w3-text-black w3-center',
+				   'Set "yes" to enable automatic sampling of <br>' +
+				   'signal-to-noise ratio (SNR) every 6 hours. <br>' +
+				   'Access SNR data in JSON format using <br>' +
+				   'URL of the form: <i>my_kiwi:8073/snr</i>'
+				)
+			),
          ''
 		) +
 		'<hr>';
@@ -1859,12 +1869,15 @@ function gps_update_admin_cb()
 			);
 	
 		var sub = '';
+		var has_subframes = false;
 		for (var i = SUBFRAMES-1; i >= 0; i--) {
 			var sub_color;
 			if (ch.sub_renew & (1<<i)) {
 				sub_color = 'w3-grey';
 			} else {
-				sub_color = (ch.sub & (1<<i))? sub_colors[i]:'w3-white';
+			   var subframe = ch.sub & (1<<i);
+				sub_color = subframe? sub_colors[i]:'w3-white';
+				if (subframe) has_subframes = true;
 			}
 			sub += '<span class="w3-tag '+ sub_color +'">'+ (i+1) +'</span>';
 		}
@@ -1881,10 +1894,11 @@ function gps_update_admin_cb()
 
 	   if (adm.rssi_azel_iq == _gps.RSSI) {
          var pct = ((ch.rssi / max_rssi) * 100).toFixed(0);
+         var color = has_subframes? 'w3-light-green' : 'w3-red';
          cells +=
             w3_table_cells('',
                w3_div('w3-progress-container w3-round-xlarge w3-white',
-                  w3_div('w3-progressbar w3-round-xlarge w3-light-green|width:'+ pct +'%',
+                  w3_div('w3-progressbar w3-round-xlarge '+ color +'|width:'+ pct +'%',
                      w3_div('w3-container w3-text-white', ch.rssi)
                   )
                )
@@ -2806,66 +2820,31 @@ function admin_msg(param)
 
 		case "gps_update_cb":
 			//console.log('gps_update_cb='+ param[1]);
-			try {
-				var gps_json = decodeURIComponent(param[1]);
-				gps = JSON.parse(gps_json);
-				w3_call('gps_update_admin_cb');
-			} catch(ex) {
-				console.log('<'+ gps_json +'>');
-				console.log('kiwi_msg() gps_update_cb: JSON parse fail');
-			}
+         gps = kiwi_JSON_parse('gps_update_cb', decodeURIComponent(param[1]));
+         w3_call('gps_update_admin_cb');
 			break;
 
 		case "gps_IQ_data_cb":
-			try {
-				var IQ_data = decodeURIComponent(param[1]);
-				_gps.IQ_data = JSON.parse(IQ_data);
-			   //console.log('gps_IQ_data_cb ch='+ _gps.IQ_data.ch +' len='+ _gps.IQ_data.IQ.length);
-			   //console.log(_gps.IQ_data);
-			} catch(ex) {
-				console.log('<'+ IQ_data +'>');
-				console.log('kiwi_msg() gps_IQ_data_cb: JSON parse fail');
-			}
+         _gps.IQ_data = kiwi_JSON_parse('gps_IQ_data_cb', decodeURIComponent(param[1]));
 			break;
 
       case "gps_POS_data_cb":
-         try {
-            var POS_data = decodeURIComponent(param[1]);
-            _gps.POS_data = JSON.parse(POS_data);
-            //console.log('gps_POS_data_cb len='+ _gps.POS_data.POS.length);
-            //console.log(_gps.POS_data);
-         } catch(ex) {
-            console.log('<'+ POS_data +'>');
-            console.log('kiwi_msg() gps_POS_data_cb: JSON parse fail');
-         }
+         _gps.POS_data = kiwi_JSON_parse('gps_POS_data_cb', decodeURIComponent(param[1]));
          break;
 
       case "gps_MAP_data_cb":
-         try {
-            var MAP_data = decodeURIComponent(param[1]);
-            _gps.MAP_data = JSON.parse(MAP_data);
-            //console.log('gps_MAP_data_cb len='+ _gps.MAP_data.MAP.length);
-            //console.log(_gps.MAP_data);
-         } catch(ex) {
-            console.log('<'+ MAP_data +'>');
-            console.log('kiwi_msg() gps_MAP_data_cb: JSON parse fail');
-         }
+         _gps.MAP_data = kiwi_JSON_parse('gps_MAP_data_cb', decodeURIComponent(param[1]));
          break;
 
       case "gps_az_el_history_cb":
-         var gps_az_el_json;
-         try {
-            gps_az_el_json = decodeURIComponent(param[1]);
-            w3_call('gps_az_el_history_cb', JSON.parse(gps_az_el_json));
-         } catch(ex) {
-            console.log('kiwi_msg() gps_az_el_history_cb: JSON parse fail');
-            console.log(gps_az_el_json);
-         }
+         var gps_az_el = kiwi_JSON_parse('gps_az_el_history_cb', decodeURIComponent(param[1]));
+         if (gps_az_el) w3_call('gps_az_el_history_cb', gps_az_el);
          break;
 
 		case "dx_json":
 			console.log('dx_json len='+ param[1].length);
-			dx_json(JSON.parse(param[1]));
+         var obj = kiwi_JSON_parse('dx_json', param[1]);
+			if (obj) dx_json(obj);
 			break;
 		
 		default:

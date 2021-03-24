@@ -34,7 +34,8 @@ function kiwi_monitor()
 	      w3_text('w3-text-black', 'All Kiwi channels busy. Click button to wait in queue for an available channel.'),
          w3_inline('w3-margin-L-8 w3-margin-T-4/w3-margin-right w3-valign',
             w3_button('id-queue-button w3-medium w3-padding-smaller w3-green', 'Enter queue', 'kiwi_queue_cb'),
-            w3_text('id-queue-pos w3-text-black')
+            w3_text('id-queue-pos w3-text-black'),
+            w3_button('id-queue-button w3-medium w3-padding-smaller w3-yellow', 'Reload page', 'kiwi_queue_reload_cb'),
          ),
          w3_text('id-queue-status w3-margin-T-4 w3-text-black', ''),
 
@@ -76,10 +77,7 @@ function kiwi_monitor()
             var pos = a[0], waiters = a[1], reload = +a[2];
             
             // remove any camp url param so the reload doesn't come right back here
-            if (reload) {
-               var url = kiwi_remove_search_param(window.location.href, 'camp');
-               window.location.href = url;
-            }
+            if (reload) kiwi_queue_reload_cb();
             var s = '';
             if (kiwi.queued) s += 'You are '+ pos +' of '+ waiters +' in queue.';
             w3_innerHTML('id-queue-pos', s);
@@ -94,7 +92,8 @@ function kiwi_monitor()
                   monitor.init = true;
                }
                
-               s = w3_inline('w3-margin-T-4/w3-margin-right w3-valign',
+               s = w3_div('',
+                  w3_inline('w3-margin-T-4/w3-margin-right w3-valign',
                      w3_text('id-queue-pos w3-text-black', 'Camping on RX'+ rx),
                      w3_button('w3-medium w3-padding-smaller w3-red', 'Stop', 'kiwi_camp_stop_cb'),
                      w3_slider('w3-margin-L-16/w3-label-inline w3-label-not-bold/', 'Volume', 'kiwi.volume', kiwi.volume, 0, 200, 1, 'setvolume'),
@@ -107,11 +106,15 @@ function kiwi_monitor()
                            w3_icon('', 'fa-times fa-right', 12, '', 'toggle_or_set_mute')
                         )
                      )
-                  );
+                  ) +
+                  w3_div('id-control-smeter w3-margin-T-4')
+               );
             } else {
                s = 'Too many campers on channel RX'+ rx;
+               rx = -1;
             }
-            w3_innerHTML('id-camp-status', s);
+            kiwi_camp_update(rx, s);
+            if (rx != -1) smeter_init(/* force_no_agc_thresh_smeter */ true);
 	         toggle_or_set_mute(0);
             break;
          
@@ -127,6 +130,23 @@ function kiwi_monitor()
    };
 }
 
+function kiwi_queue_reload_cb()
+{
+   var url = kiwi_remove_search_param(window.location.href, 'camp');
+   window.location.href = url;
+}
+
+function kiwi_camp_update(rx, s)
+{
+   w3_innerHTML('id-camp-status', s);
+   for (var i = 0; i < rx_chans; i++) {
+      var el = w3_el('id-user-'+ i);
+      w3_remove(el, 'w3-green');
+      if (i == rx)
+         w3_add(el, 'w3-green');
+   }
+}
+
 function camp(ch, freq, mode, zoom)
 {
    console.log('camp ch'+ ch);
@@ -137,6 +157,6 @@ function camp(ch, freq, mode, zoom)
 function kiwi_camp_stop_cb()
 {
    console.log('camp STOP');
-   w3_innerHTML('id-camp-status', '');
+   kiwi_camp_update(-1, '');
    msg_send('SET MON_CAMP=-1');
 }
