@@ -17,8 +17,7 @@
 `define DEF_ADC_BITS
 	parameter DEFAULT_NSYNC = 2;    // DEFp 0x2
 `define DEF_DEFAULT_NSYNC
-	parameter USE_GEN = 1;    // DEFp 0x1
-`define DEF_USE_GEN
+`define USE_GEN    // DEFh 0x1
 `define USE_LOGGER    // DEFh 0x1
 `define USE_CPU_CTR    // DEFh 0x1
 `define USE_DEBUG    // DEFh 0x1
