@@ -74,6 +74,21 @@ void ext_adjust_clock_offset(int rx_chan, double offset)
     */
 }
 
+ext_auth_e ext_auth(int rx_chan)
+{
+    conn_t *conn = (&rx_channels[rx_chan])->conn;
+    if (conn->isLocal) return AUTH_LOCAL;
+    if (conn->isPassword) return AUTH_PASSWORD;
+    return AUTH_USER;
+}
+
+void ext_notify_connected(int rx_chan, u4_t seq, char *msg)
+{
+    extint.notify_chan = rx_chan;
+    extint.notify_seq = seq;
+    kiwi_strncpy(extint.notify_msg, msg, N_NOTIFY);
+}
+
 void ext_register_receive_iq_samps(ext_receive_iq_samps_t func, int rx_chan)
 {
 	ext_users[rx_chan].receive_iq = func;
@@ -206,6 +221,8 @@ int ext_send_msg_encoded(int rx_chan, bool debug, const char *dst, const char *c
 ////////////////////////////////
 // private
 ////////////////////////////////
+
+extint_t extint;
 
 void extint_setup()
 {
