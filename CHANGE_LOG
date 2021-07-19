@@ -2,6 +2,9 @@ CHANGE_LOG
 
 For the Github commit log see here: github.com/jks-prv/Beagle_SDR_GPS/commits/master
 
+v1.447.1  July 19, 2021
+    Remove admin backdoor
+
 v1.447  March 30, 2021
     WSPR autorun restart now correctly zeros decode counters.
     Trim trailing newlines from command API (accommodates commands sourced from files).
